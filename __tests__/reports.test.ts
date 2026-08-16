@@ -8,9 +8,11 @@ const { mockPrisma } = vi.hoisted(() => ({
     dmLog: {
       groupBy: vi.fn(),
       findFirst: vi.fn(),
+      findMany: vi.fn(),
       count: vi.fn(),
     },
     linkClick: {
+      findMany: vi.fn(),
       count: vi.fn(),
     },
   },
@@ -69,6 +71,14 @@ beforeEach(() => {
     createdAt: new Date("2026-05-20T12:00:00.000Z"),
   });
   mockPrisma.dmLog.count.mockResolvedValue(2);
+  // The 7-day chart is two bounded reads bucketed in JS, not fourteen counts.
+  // Two sends and one click, all today, so the last bucket is the only non-zero one.
+  const today = new Date();
+  mockPrisma.dmLog.findMany.mockResolvedValue([
+    { createdAt: today },
+    { createdAt: today },
+  ]);
+  mockPrisma.linkClick.findMany.mockResolvedValue([{ createdAt: today }]);
 });
 
 describe("campaign reports", () => {
@@ -102,6 +112,11 @@ describe("campaign reports", () => {
       ],
     });
     expect(report?.daily).toHaveLength(7);
+    // Timestamps land in the right day bucket rather than being spread evenly.
+    expect(report?.daily.at(-1)).toMatchObject({ sent: 2, clicks: 1 });
+    expect(report?.daily.slice(0, 6).every((d) => d.sent === 0 && d.clicks === 0)).toBe(
+      true
+    );
     expect("dmMessage" in (report?.campaign ?? {})).toBe(false);
   });
 

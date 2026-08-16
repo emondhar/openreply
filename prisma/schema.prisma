@@ -18,12 +18,12 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  accounts          Account[]
-  sessions          Session[]
-  authenticators    Authenticator[]
-  ownedWorkspaces   Workspace[]       @relation("WorkspaceOwner")
-  workspaceMembers  WorkspaceMember[]
-  sentInvitations   WorkspaceInvitation[] @relation("WorkspaceInvitationsSent")
+  accounts         Account[]
+  sessions         Session[]
+  authenticators   Authenticator[]
+  ownedWorkspaces  Workspace[]           @relation("WorkspaceOwner")
+  workspaceMembers WorkspaceMember[]
+  sentInvitations  WorkspaceInvitation[] @relation("WorkspaceInvitationsSent")
 }
 
 model Account {
@@ -150,21 +150,21 @@ model WorkspaceInvitation {
 }
 
 model InstagramAccount {
-  id                String   @id @default(cuid())
+  id                String    @id @default(cuid())
   workspaceId       String
-  instagramId       String   @unique
+  instagramId       String    @unique
   username          String
   name              String?
   accessToken       String
   tokenExpiresAt    DateTime?
-  webhookSubscribed Boolean  @default(false)
-  connectedAt       DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  webhookSubscribed Boolean   @default(false)
+  connectedAt       DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
-  workspace   Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  automations Automation[]
-  dmLogs      DmLog[]
-  linkClicks  LinkClick[]
+  workspace         Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  automations       Automation[]
+  dmLogs            DmLog[]
+  linkClicks        LinkClick[]
   followerSnapshots FollowerSnapshot[]
 
   @@index([workspaceId])
@@ -191,48 +191,57 @@ model FollowerSnapshot {
 }
 
 model Automation {
-  id                 String   @id @default(cuid())
+  id                 String @id @default(cuid())
   workspaceId        String
   instagramAccountId String
 
-  name           String
-  goal           String?
-  postId         String?
-  postUrl        String?
-  pendingNextReel Boolean @default(false)
-  matchAnyPost   Boolean @default(false)
-  keywords       String[]
-  matchAnyWord   Boolean @default(false)
+  name                    String
+  goal                    String?
+  /// Mirror of the primary (oldest) row in `posts`, kept in sync on every write.
+  /// The set in `posts` is the source of truth for matching — these two columns
+  /// only survive so the CSV importer and the public report keep working, and
+  /// are due for removal once those read `posts` directly.
+  postId                  String?
+  postUrl                 String?
+  pendingNextReel         Boolean  @default(false)
+  matchAnyPost            Boolean  @default(false)
+  /// Saved targeting rule (see lib/campaigns/post-rules.ts). When set, matching
+  /// posts are enrolled into `posts` with source RULE — on first sighting of a
+  /// new media in the worker, and by the periodic sweep. null = no rule.
+  postRule                Json?
+  keywords                String[]
+  matchAnyWord            Boolean  @default(false)
   // Also fire this campaign when someone sends a DM whose text matches the
   // keywords above. Independent of the post trigger — a DM has no media, so
   // postId / matchAnyPost do not apply to it.
-  dmTriggerEnabled Boolean @default(false)
-  dmMessage      String
-  openingDmEnabled     Boolean @default(false)
-  openingDmMessage     String?
-  openingDmButtonLabel String?
-  linkButtonLabel      String?
-  requireFollow           Boolean @default(false)
+  dmTriggerEnabled        Boolean  @default(false)
+  dmMessage               String
+  openingDmEnabled        Boolean  @default(false)
+  openingDmMessage        String?
+  openingDmButtonLabel    String?
+  linkButtonLabel         String?
+  requireFollow           Boolean  @default(false)
   followPromptMessage     String?
   followPromptButtonLabel String?
-  followUpEnabled Boolean @default(false)
-  followUpMessage String?
+  followUpEnabled         Boolean  @default(false)
+  followUpMessage         String?
   // Minutes to wait after the link is delivered before sending the follow-up.
   // 0 sends it right away.
-  followUpDelayMinutes Int @default(0)
-  publicReplyEnabled Boolean @default(false)
-  publicReplyMessage String?
-  publicReplyMessages String[] @default([])
-  isActive       Boolean @default(true)
-  wholeWordMatch Boolean @default(true)
-  reportShareSlug    String? @unique
-  reportShareEnabled Boolean @default(true)
+  followUpDelayMinutes    Int      @default(0)
+  publicReplyEnabled      Boolean  @default(false)
+  publicReplyMessage      String?
+  publicReplyMessages     String[] @default([])
+  isActive                Boolean  @default(true)
+  wholeWordMatch          Boolean  @default(true)
+  reportShareSlug         String?  @unique
+  reportShareEnabled      Boolean  @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   workspace        Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   instagramAccount InstagramAccount @relation(fields: [instagramAccountId], references: [id], onDelete: Cascade)
+  posts            AutomationPost[]
   dmLogs           DmLog[]
   trackedLinks     TrackedLink[]
   linkClicks       LinkClick[]
@@ -242,21 +251,68 @@ model Automation {
   @@index([postId])
 }
 
+/// How a post came to be part of a campaign. Also the tiebreak when several
+/// campaigns match one comment: Instagram allows exactly one private reply per
+/// comment ever, so the most specific campaign wins (MANUAL > RULE/NEXT_REEL >
+/// matchAnyPost). See specificity() in lib/queue/dm-worker.ts.
+enum PostSource {
+  MANUAL
+  RULE
+  NEXT_REEL
+}
+
+/// One post covered by one campaign. Replaces the old single Automation.postId
+/// as the source of truth for "which media triggers this campaign".
+model AutomationPost {
+  id           String     @id @default(cuid())
+  automationId String
+  mediaId      String
+  source       PostSource @default(MANUAL)
+  /// Removed by hand after a rule added it. Kept as a row rather than deleted so
+  /// the next rule sweep doesn't just add it straight back.
+  excluded     Boolean    @default(false)
+
+  // Graph metadata cached at selection time. Without this every surface that
+  // renders a campaign has to re-download the account's media list to find one
+  // thumbnail — and a post older than that page renders nothing at all.
+  permalink    String?
+  thumbnailUrl String?
+  mediaUrl     String?
+  mediaType    String? // REEL | IMAGE | CAROUSEL | VIDEO
+  caption      String?
+  postedAt     DateTime?
+
+  addedAt DateTime @default(now())
+
+  automation Automation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+
+  @@unique([automationId, mediaId])
+  // The webhook hot path looks up campaigns by media id on every comment.
+  @@index([mediaId])
+  @@index([automationId, excluded])
+  // The polling sweep collects covered media newest-first within the lookback.
+  @@index([postedAt])
+}
+
 model DmLog {
-  id                 String     @id @default(cuid())
+  id                 String @id @default(cuid())
   workspaceId        String
   automationId       String
   instagramAccountId String
 
-  commenterId   String
-  commenterName String?
-  commentText   String
-  commentId     String
+  commenterId    String
+  commenterName  String?
+  commentText    String
+  commentId      String
+  /// Media the comment was on. Null for the inbound-DM trigger, which has no
+  /// media. A campaign can cover many posts, so this can no longer be inferred
+  /// from the automation — it is what makes the per-post breakdown possible.
+  postId         String?
   matchedKeyword String?
-  status        DmStatus @default(PENDING)
-  attempts      Int      @default(0)
-  dmSentAt      DateTime?
-  errorMessage  String?
+  status         DmStatus  @default(PENDING)
+  attempts       Int       @default(0)
+  dmSentAt       DateTime?
+  errorMessage   String?
 
   // The public comment reply is delivered independently of the DM, so its
   // outcome is tracked separately. publicReplySentAt makes it idempotent across
@@ -283,6 +339,8 @@ model DmLog {
   @@index([workspaceId, createdAt])
   @@index([workspaceId, instagramAccountId, createdAt])
   @@index([automationId, status])
+  // Per-post breakdown on the campaign detail page.
+  @@index([automationId, postId])
 }
 
 // Every comment the system has seen, from either the webhook or the polling
@@ -344,14 +402,14 @@ model LinkClick {
 }
 
 model WebhookEvent {
-  id          String        @id @default(cuid())
-  workspaceId String?
-  object      String?
-  payload     Json
-  status      WebhookStatus @default(PENDING)
+  id           String        @id @default(cuid())
+  workspaceId  String?
+  object       String?
+  payload      Json
+  status       WebhookStatus @default(PENDING)
   errorMessage String?
-  createdAt   DateTime      @default(now())
-  processedAt DateTime?
+  createdAt    DateTime      @default(now())
+  processedAt  DateTime?
 
   workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
 
@@ -360,13 +418,13 @@ model WebhookEvent {
 }
 
 model OperationalEvent {
-  id          String                @id @default(cuid())
+  id          String                 @id @default(cuid())
   workspaceId String?
   source      OperationalEventSource
-  level       OperationalEventLevel @default(INFO)
+  level       OperationalEventLevel  @default(INFO)
   message     String
   payload     Json?
-  createdAt   DateTime              @default(now())
+  createdAt   DateTime               @default(now())
   resolvedAt  DateTime?
 
   workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)

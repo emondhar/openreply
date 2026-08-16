@@ -2,17 +2,12 @@ import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
+// Fallback metadata for routes that do not set their own — the dashboard,
+// login, and the legal pages. The marketing SEO routes each define their own
+// title and description and are unaffected by this.
 export const metadata: Metadata = {
-  title: "OpenReply - Open source Instagram comment-to-DM automation",
-  description:
-    "A free, self-hosted ManyChat alternative. Send an Instagram DM automatically when someone comments a keyword on your post or reel, using the official Meta API.",
-  keywords: [
-    "instagram automation",
-    "comment to DM",
-    "instagram private replies",
-    "social commerce",
-    "manychat alternative",
-  ],
+  title: "ManyChat by Emon",
+  description: "Private instance. Nothing to see here.",
 };
 
 export default function RootLayout({

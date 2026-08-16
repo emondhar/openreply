@@ -12,6 +12,7 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "worker": "tsx --env-file-if-exists=.env worker/dm-worker.ts",
+    "worker:dev": "tsx watch --watch-preserve-output --env-file-if-exists=.env worker/dm-worker.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },

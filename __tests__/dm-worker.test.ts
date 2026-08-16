@@ -158,6 +158,10 @@ const mockAutomation = {
   workspace: {
     id: "workspace_123",
   },
+  // The post was picked by hand for this campaign — the most specific way to
+  // cover a post, and what decides who wins the comment's one private reply.
+  posts: [{ source: "MANUAL" }],
+  createdAt: new Date("2026-05-01T00:00:00.000Z"),
   trackedLinks: [],
 };
 
@@ -283,13 +287,21 @@ describe("DM Worker — Full Pipeline", () => {
 
     expect(mockPrisma.automation.findMany).toHaveBeenCalledWith({
       where: {
-        OR: [{ postId: "media_101" }, { matchAnyPost: true }],
+        OR: [
+          { posts: { some: { mediaId: "media_101", excluded: false } } },
+          { matchAnyPost: true },
+        ],
         isActive: true,
         instagramAccount: { instagramId: "ig_456" },
       },
       include: {
         instagramAccount: true,
         workspace: true,
+        posts: {
+          where: { mediaId: "media_101", excluded: false },
+          select: { source: true },
+          take: 1,
+        },
         trackedLinks: {
           select: {
             slug: true,
@@ -335,6 +347,79 @@ describe("DM Worker — Full Pipeline", () => {
 
     expect(mockSendPrivateReply).not.toHaveBeenCalled();
     expect(mockPrisma.dmLog.upsert).not.toHaveBeenCalled();
+  });
+
+  it("records which post the comment came from", async () => {
+    const processor = getProcessor();
+
+    await processor(createMockJob());
+
+    // Without this column the per-post breakdown is impossible: a campaign can
+    // cover many posts, so the automation no longer implies the media.
+    expect(mockPrisma.dmLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ postId: "media_101" }),
+    });
+  });
+
+  it("gives the one private reply to the most specific campaign", async () => {
+    // Instagram allows exactly one private reply per comment, ever. A catch-all
+    // campaign created earlier must not beat one that names this exact post.
+    const catchAll = {
+      ...mockAutomation,
+      id: "auto_catchall",
+      name: "Catch-all",
+      matchAnyPost: true,
+      posts: [],
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+    };
+    const specific = {
+      ...mockAutomation,
+      id: "auto_specific",
+      name: "Hand-picked",
+      posts: [{ source: "MANUAL" }],
+      createdAt: new Date("2026-09-01T00:00:00.000Z"),
+    };
+    // Returned oldest-first, which is exactly the order that used to win.
+    mockPrisma.automation.findMany.mockResolvedValue([catchAll, specific]);
+
+    // Once the specific campaign has sent, the cross-campaign guard reports the
+    // reply as spent for everyone else.
+    let sent = false;
+    mockPrisma.dmLog.findFirst.mockImplementation(
+      async (args: { where?: { status?: string } } = {}) => {
+        if (args.where?.status !== "SENT") return { commenterName: "commenter_user" };
+        return sent ? { automation: { name: "Hand-picked" } } : null;
+      }
+    );
+    mockSendPrivateReply.mockImplementation(async () => {
+      sent = true;
+      return { recipient_id: "commenter_999", message_id: "msg_001" };
+    });
+
+    const processor = getProcessor();
+    await processor(createMockJob());
+
+    expect(mockSendPrivateReply).toHaveBeenCalledTimes(1);
+    // The hand-picked campaign sent...
+    expect(mockPrisma.dmLog.update).toHaveBeenCalledWith({
+      where: {
+        automationId_commentId: {
+          automationId: "auto_specific",
+          commentId: "comment_555",
+        },
+      },
+      data: expect.objectContaining({ status: "SENT" }),
+    });
+    // ...and the catch-all was skipped, not the other way round.
+    expect(mockPrisma.dmLog.update).toHaveBeenCalledWith({
+      where: {
+        automationId_commentId: {
+          automationId: "auto_catchall",
+          commentId: "comment_555",
+        },
+      },
+      data: expect.objectContaining({ status: "SKIPPED_DEDUP" }),
+    });
   });
 
   it("should skip when keywords do not match", async () => {

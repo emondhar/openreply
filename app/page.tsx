@@ -3,60 +3,47 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "OpenReply - Open source Instagram comment-to-DM automation",
-  description:
-    "A free, self-hosted ManyChat alternative. Turn Instagram keyword comments into automatic private replies using the official Meta API.",
+  title: "ManyChat by Emon",
+  description: "Private instance. Nothing to see here.",
+  // The share card is the joke's punchline, so it deliberately disagrees with
+  // the tab title.
+  openGraph: {
+    title: "You found it.",
+    description: "Private instance. Nothing to see here.",
+  },
+  twitter: {
+    title: "You found it.",
+    description: "Private instance. Nothing to see here.",
+  },
 };
 
 const GITHUB_URL = "https://github.com/diwenne/openreply";
 
-function formatStars(count: number): string {
-  if (count >= 1000) {
-    return `${(count / 1000).toFixed(1)}K`;
-  }
-  return count.toLocaleString();
-}
-
-const githubIconPath =
-  "M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z";
-
+// Real numbers, and the last one is the joke. Nothing here is a projection or
+// a rounded-up marketing figure — that was the point of replacing the previous
+// block, which advertised "24/7 monitoring" like a product with customers.
 const heroStats = [
-  { value: "24/7", label: "Comment monitoring" },
-  { value: "1", label: "DM per matched comment" },
-  { value: "0", label: "Scraping required" },
+  { value: "$0", label: "monthly subscription replaced" },
+  { value: "~1s", label: "comment to DM" },
+  { value: "1", label: "user" },
 ];
 
 const flowSteps = [
   {
-    eyebrow: "Connect",
-    title: "Link your Instagram professional account",
+    eyebrow: "Watches",
     description:
-      "Sign in by email and connect Instagram once. No password sharing, no browser automation.",
+      "A webhook catches every comment on the posts I've armed. A polling sweep picks up whatever Instagram forgets to push, because Instagram forgets a lot.",
   },
   {
-    eyebrow: "Build",
-    title: "Pick a post, keywords, and the DM",
+    eyebrow: "Matches",
     description:
-      "Create a campaign for a reel or post: the keyword to watch, the public reply, and the DM to send.",
+      "If the comment contains the keyword I set, it queues a DM and leaves a public reply so the thread doesn't look dead.",
   },
   {
-    eyebrow: "Deliver",
-    title: "Replies go out through the official API",
+    eyebrow: "Sends",
     description:
-      "Webhooks catch comments instantly and a polling sweep catches the ones Instagram never pushes, so nothing is missed. Every send is queued, rate-limited, and logged.",
+      "Official Instagram API, rate-limited, logged. No browser automation, no scraping, nothing that gets an account banned.",
   },
-];
-
-const features = [
-  "Email magic-link sign-in",
-  "Multiple Instagram accounts",
-  "Encrypted tokens at rest",
-  "Webhook + polling reconciliation",
-  "Queue-backed delivery worker",
-  "Per-account rate limiting",
-  "Tracked links with click stats",
-  "DM logs with full status",
-  "No plan limits, fully self-hosted",
 ];
 
 /* Static, faithful copies of the real Overview and Dashboard screens, built in
@@ -80,7 +67,9 @@ function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded border border-border bg-surface p-4">
       <p className="text-sm text-muted">{label}</p>
-      <p className="mt-1 text-2xl font-semibold text-foreground">{value}</p>
+      <p className="mt-1 text-2xl font-semibold tabular-nums text-foreground">
+        {value}
+      </p>
     </div>
   );
 }
@@ -95,9 +84,9 @@ const overviewStats = [
 ];
 
 const overviewPosts = [
-  ["Spring drop reel", "214.8K", "9.1K", "Apr 3"],
-  ["Restock haul", "88.4K", "5.2K", "Mar 28"],
-  ["Behind the studio", "51.3K", "3.4K", "Mar 21"],
+  ["Day 41 — the build", "214.8K", "9.1K", "Apr 3"],
+  ["Tabla at 2am", "88.4K", "5.2K", "Mar 28"],
+  ["Why I stopped", "51.3K", "3.4K", "Mar 21"],
 ];
 
 function OverviewPreview() {
@@ -107,7 +96,7 @@ function OverviewPreview() {
         <div>
           <h3 className="text-base font-semibold text-foreground">Overview</h3>
           <p className="mt-1 text-xs text-muted">
-            Recent — 24 posts from @studio.store
+            Recent — 24 posts from @emondhar
           </p>
         </div>
         <span className="rounded border border-border px-2 py-1 text-xs text-muted">
@@ -126,7 +115,7 @@ function OverviewPreview() {
           <p className="text-sm font-semibold text-foreground">
             Followers over time
           </p>
-          <p className="text-xs text-muted">
+          <p className="text-xs text-muted tabular-nums">
             48,210 <span className="text-success">+1,240</span> · 30d
           </p>
         </div>
@@ -164,8 +153,12 @@ function OverviewPreview() {
             {overviewPosts.map(([post, views, likes, date]) => (
               <tr key={post} className="border-b border-border last:border-0">
                 <td className="py-2 pr-3 text-foreground">{post}</td>
-                <td className="py-2 px-3 text-right text-muted">{views}</td>
-                <td className="py-2 px-3 text-right text-muted">{likes}</td>
+                <td className="py-2 px-3 text-right tabular-nums text-muted">
+                  {views}
+                </td>
+                <td className="py-2 px-3 text-right tabular-nums text-muted">
+                  {likes}
+                </td>
                 <td className="py-2 pl-3 text-right text-zinc-500">{date}</td>
               </tr>
             ))}
@@ -184,7 +177,7 @@ function MatchedCommentCard() {
       <p className="mt-1 text-sm text-muted">LINK please</p>
       <div className="mt-3 border-t border-border pt-3">
         <p className="text-xs text-muted">
-          Matched <span className="text-accent">GUIDE</span>
+          Matched <span className="text-accent">LINK</span>
         </p>
         <p className="mt-1 text-sm font-medium text-success">
           Queued private reply
@@ -195,7 +188,7 @@ function MatchedCommentCard() {
 }
 
 const dashboardStats = [
-  ["Active Campaigns", "8"],
+  ["Active Campaigns", "3"],
   ["DMs Sent", "1,284"],
   ["Skipped", "42"],
   ["Failed", "3"],
@@ -214,17 +207,17 @@ const dashboardChart: [string, number][] = [
 ];
 
 const dashboardActivity = [
-  ["@maya.co", "Product guide reply", "Sent", "text-success"],
-  ["@founder.ray", "Price request", "Sent", "text-success"],
-  ["@shop.ava", "Lead magnet", "Queued", "text-warning"],
+  ["@maya.co", "Reel link", "Sent", "text-success"],
+  ["@founder.ray", "Reel link", "Sent", "text-success"],
+  ["@shop.ava", "Tabla course", "Queued", "text-warning"],
 ];
 
 function DashboardPreview() {
   const maxDM = Math.max(...dashboardChart.map(([, n]) => n));
   return (
     <AppWindow label="app / dashboard">
-      <h3 className="text-base font-semibold text-foreground">Hello, Maya!</h3>
-      <p className="mt-1 text-xs text-muted">2 connected accounts · 340 contacts</p>
+      <h3 className="text-base font-semibold text-foreground">Hello, Emon!</h3>
+      <p className="mt-1 text-xs text-muted">1 connected account · 340 contacts</p>
 
       <div className="mt-4 grid grid-cols-3 gap-3">
         {dashboardStats.map(([label, value]) => (
@@ -237,7 +230,7 @@ function DashboardPreview() {
         <div className="mt-4 flex h-32 items-end gap-2">
           {dashboardChart.map(([day, n]) => (
             <div key={day} className="flex flex-1 flex-col items-center gap-2">
-              <span className="text-[10px] text-muted">{n}</span>
+              <span className="text-[10px] tabular-nums text-muted">{n}</span>
               <div
                 className="w-full rounded-sm bg-accent"
                 style={{ height: `${Math.max((n / maxDM) * 100, 4)}%` }}
@@ -267,67 +260,50 @@ function DashboardPreview() {
   );
 }
 
-async function getGitHubStars(): Promise<number | null> {
-  try {
-    const res = await fetch("https://api.github.com/repos/diwenne/openreply", {
-      headers: { Accept: "application/vnd.github+json" },
-      next: { revalidate: 3600 },
-    });
-    if (!res.ok) return null;
-    const data = (await res.json()) as { stargazers_count?: number };
-    return typeof data.stargazers_count === "number" ? data.stargazers_count : null;
-  } catch {
-    return null;
-  }
-}
-
-export default async function Home() {
-  const stars = await getGitHubStars();
+export default function Home() {
   return (
     <main className="min-h-screen bg-white text-zinc-900">
       <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-5 sm:px-6 lg:px-8">
-          <Link href="/" className="flex items-center gap-3" aria-label="OpenReply home">
-            <span className="text-lg font-bold text-zinc-900">OpenReply</span>
+          <Link
+            href="/"
+            className="flex items-center gap-3"
+            aria-label="ManyChat by Emon home"
+          >
+            <span className="text-lg font-bold text-zinc-900">
+              ManyChat by Emon
+            </span>
           </Link>
 
-          <div className="flex items-center gap-4">
-            <a
-              href={GITHUB_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-2 text-sm font-semibold text-zinc-600 transition hover:text-zinc-900"
-              aria-label="View OpenReply on GitHub"
-            >
-              <svg viewBox="0 0 16 16" aria-hidden="true" className="h-4 w-4 fill-current">
-                <path d={githubIconPath} />
-              </svg>
-              {stars !== null && <span>{formatStars(stars)}</span>}
-            </a>
-            <Link
-              href="/login"
-              className="inline-flex items-center justify-center gap-2 bg-orange-500 px-4 py-2 text-sm font-bold text-white transition hover:bg-orange-600"
-            >
-              Get started
-            </Link>
-          </div>
+          <Link
+            href="/login"
+            className="inline-flex items-center justify-center gap-2 bg-orange-500 px-4 py-2 text-sm font-bold text-white transition hover:bg-orange-600"
+          >
+            Sign in
+          </Link>
         </div>
       </header>
 
       <section className="mx-auto grid w-full max-w-6xl items-center gap-10 px-5 pb-16 pt-12 sm:px-6 sm:pt-18 lg:grid-cols-[0.95fr_1.05fr] lg:px-8 lg:pb-24">
         <div className="max-w-3xl">
           <div className="inline-flex items-center gap-2 border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-600">
-            Open source · Official Meta API
+            Private instance · Not for sale
           </div>
 
           <h1 className="mt-7 text-balance text-5xl font-black leading-[1.02] text-zinc-900 sm:text-6xl lg:text-7xl">
-            Make every comment start the right DM
+            Hey. You found my special ManyChat.
           </h1>
 
           <p className="mt-6 max-w-2xl text-lg leading-8 text-zinc-600">
-            Open-sourced ManyChat. When someone comments your keyword on a post
-            or reel, they get your DM a second later. Free, self-hosted, and
-            built on the official Instagram API.
+            This is the thing that DMs you the link when you comment a keyword
+            on my reel. It runs on my own server, on the official Meta API, and
+            it costs me roughly nothing — which was the entire point.
+          </p>
+
+          <p className="mt-4 max-w-2xl text-lg leading-8 text-zinc-600">
+            There&rsquo;s no signup. If you don&rsquo;t already have a login,
+            you&rsquo;re in the wrong place, and honestly, good for you for
+            poking around.
           </p>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -335,21 +311,25 @@ export default async function Home() {
               href="/login"
               className="inline-flex items-center justify-center gap-2 bg-orange-500 px-6 py-3 text-sm font-bold text-white transition hover:bg-orange-600"
             >
-              Get started
+              Sign in
             </Link>
             <a
-              href="#how"
+              href="#why"
               className="inline-flex items-center justify-center border border-zinc-200 bg-white px-6 py-3 text-sm font-bold text-zinc-900 transition hover:border-zinc-300 hover:bg-zinc-100"
             >
-              See how it works
+              Why this exists
             </a>
           </div>
 
           <dl className="mt-10 grid max-w-xl grid-cols-3 gap-3">
             {heroStats.map((stat) => (
               <div key={stat.label} className="border border-zinc-200 bg-zinc-50 p-4">
-                <dt className="text-2xl font-black text-zinc-900">{stat.value}</dt>
-                <dd className="mt-1 text-xs leading-5 text-zinc-500">{stat.label}</dd>
+                <dt className="text-2xl font-black tabular-nums text-zinc-900">
+                  {stat.value}
+                </dt>
+                <dd className="mt-1 text-xs leading-5 text-zinc-500">
+                  {stat.label}
+                </dd>
               </div>
             ))}
           </dl>
@@ -363,31 +343,58 @@ export default async function Home() {
         </div>
       </section>
 
-      <section id="how" className="mx-auto w-full max-w-6xl px-5 py-20 sm:px-6 lg:px-8">
-        <div className="grid gap-10 lg:grid-cols-[0.82fr_1.18fr] lg:items-center">
-          <div>
-            <p className="text-sm font-bold uppercase text-orange-600">How it works</p>
+      <section
+        id="why"
+        className="border-y border-zinc-200 bg-zinc-50 py-20 scroll-mt-16"
+      >
+        <div className="mx-auto w-full max-w-6xl px-5 sm:px-6 lg:px-8">
+          <div className="max-w-2xl">
+            <p className="text-sm font-bold uppercase text-orange-600">
+              Why this exists
+            </p>
             <h2 className="mt-3 text-4xl font-black leading-tight text-zinc-900 sm:text-5xl">
-              A comment in, a DM out
+              The short version
             </h2>
             <p className="mt-5 text-base leading-8 text-zinc-600">
-              Three steps. Connect an account, build a campaign, and let it run.
-              The webhook handles it live and the poll sweeps up whatever the
-              webhook misses.
+              ManyChat wanted a subscription to send one link when someone
+              comments one word. I looked at the pricing page, closed the tab,
+              and forked OpenReply instead.
             </p>
+            <p className="mt-4 text-base leading-8 text-zinc-600">
+              Now it sits on my own domain, sends my own DMs, and charges me
+              nothing when a reel actually works. That&rsquo;s the whole story.
+              There&rsquo;s no startup here.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section
+        id="how"
+        className="mx-auto w-full max-w-6xl px-5 py-20 sm:px-6 lg:px-8 scroll-mt-16"
+      >
+        <div className="grid gap-10 lg:grid-cols-[0.82fr_1.18fr] lg:items-center">
+          <div>
+            <p className="text-sm font-bold uppercase text-orange-600">
+              How it works
+            </p>
+            <h2 className="mt-3 text-4xl font-black leading-tight text-zinc-900 sm:text-5xl">
+              What it actually does
+            </h2>
           </div>
 
           <div className="grid gap-4">
             {flowSteps.map((step) => (
               <article
-                key={step.title}
+                key={step.eyebrow}
                 className="grid gap-4 border border-zinc-200 bg-zinc-50 p-5 sm:grid-cols-[120px_1fr]"
               >
-                <p className="text-sm font-bold text-orange-600">{step.eyebrow}</p>
-                <div>
-                  <h3 className="text-xl font-bold text-zinc-900">{step.title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-zinc-600">{step.description}</p>
-                </div>
+                <p className="text-sm font-bold text-orange-600">
+                  {step.eyebrow}
+                </p>
+                <p className="text-sm leading-6 text-zinc-600">
+                  {step.description}
+                </p>
               </article>
             ))}
           </div>
@@ -399,87 +406,68 @@ export default async function Home() {
           <DashboardPreview />
 
           <div>
-            <p className="text-sm font-bold uppercase text-orange-600">The dashboard</p>
+            <p className="text-sm font-bold uppercase text-orange-600">
+              The dashboard
+            </p>
             <h2 className="mt-3 text-4xl font-black leading-tight text-zinc-900 sm:text-5xl">
-              See exactly what happened
+              Everything is traceable
             </h2>
             <p className="mt-5 text-base leading-8 text-zinc-600">
-              Every comment event is traceable: queued, matched, sent, skipped,
-              failed, or rate-limited. No black box.
+              Queued, matched, sent, skipped, failed, rate-limited. If a DM
+              didn&rsquo;t land, I know exactly where it died. That&rsquo;s the
+              part I actually wanted.
             </p>
           </div>
         </div>
       </section>
 
-      <section id="features" className="mx-auto w-full max-w-6xl px-5 py-20 sm:px-6 lg:px-8">
-        <div className="max-w-2xl">
-          <p className="text-sm font-bold uppercase text-orange-600">What&rsquo;s included</p>
-          <h2 className="mt-3 text-4xl font-black leading-tight text-zinc-900 sm:text-5xl">
-            Everything, no tiers
-          </h2>
-          <p className="mt-5 text-base leading-8 text-zinc-600">
-            It is self-hosted and open source, so there is nothing to unlock. You
-            run it, you own it.
-          </p>
-        </div>
-
-        <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {features.map((feature) => (
-            <div
-              key={feature}
-              className="border border-zinc-200 bg-zinc-50 p-4 text-sm font-semibold text-zinc-700"
-            >
-              {feature}
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="mx-auto w-full max-w-6xl px-5 pb-20 sm:px-6 lg:px-8">
+      <section className="mx-auto w-full max-w-6xl px-5 py-20 sm:px-6 lg:px-8">
         <div className="grid gap-8 border border-orange-200 bg-orange-50 p-6 sm:p-10 lg:grid-cols-[1fr_auto] lg:items-center">
           <div>
             <h2 className="max-w-3xl text-4xl font-black leading-tight text-zinc-900 sm:text-5xl">
-              Turn your next reel&rsquo;s comments into DMs
+              That&rsquo;s it. That&rsquo;s the page.
             </h2>
-            <p className="mt-4 text-base text-zinc-600">
-              Free and open source. Star it if it saves you a subscription.
+            <p className="mt-4 text-base leading-7 text-zinc-600">
+              If you&rsquo;re logged in, the dashboard is behind the button. If
+              you&rsquo;re not, go watch the reel that sent you here.
             </p>
           </div>
-          <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
-            <Link
-              href="/login"
-              className="inline-flex items-center justify-center gap-2 bg-orange-500 px-6 py-3 text-sm font-bold text-white transition hover:bg-orange-600"
-            >
-              Get started
-            </Link>
-            <a
-              href={GITHUB_URL}
-              className="inline-flex items-center justify-center border border-zinc-200 bg-white px-6 py-3 text-sm font-bold text-zinc-900 transition hover:border-zinc-300 hover:bg-zinc-100"
-            >
-              View on GitHub
-            </a>
-          </div>
+          <Link
+            href="/login"
+            className="inline-flex items-center justify-center gap-2 bg-orange-500 px-6 py-3 text-sm font-bold text-white transition hover:bg-orange-600"
+          >
+            Sign in
+          </Link>
         </div>
       </section>
 
       <footer className="border-t border-zinc-200 py-8">
-        <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-5 text-sm text-zinc-500 sm:px-6 lg:px-8">
-          <span className="font-semibold text-zinc-600">OpenReply</span>
-          <a
-            href={GITHUB_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-2 transition hover:text-zinc-900"
-          >
-            <svg
-              viewBox="0 0 16 16"
-              aria-hidden="true"
-              className="h-4 w-4 fill-current"
+        <div className="mx-auto w-full max-w-6xl space-y-2 px-5 text-sm leading-6 text-zinc-500 sm:px-6 lg:px-8">
+          <p className="font-semibold text-zinc-600">
+            ManyChat by Emon · Private instance, self-hosted in Montreal.
+          </p>
+          <p>
+            Forked from{" "}
+            <a
+              href={GITHUB_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="underline underline-offset-2 transition hover:text-zinc-900"
             >
-              <path d={githubIconPath} />
-            </svg>
-            {stars !== null && <span>{formatStars(stars)}</span>}
-          </a>
+              OpenReply
+            </a>{" "}
+            by diwenne. Open source, and it saved me a subscription —{" "}
+            <a
+              href={GITHUB_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="underline underline-offset-2 transition hover:text-zinc-900"
+            >
+              go star it
+            </a>
+            .
+          </p>
+          <p>Not affiliated with ManyChat Inc. in any way whatsoever.</p>
         </div>
       </footer>
     </main>

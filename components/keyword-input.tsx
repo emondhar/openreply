@@ -12,13 +12,29 @@ interface KeywordInputProps {
   keywords: string[];
   onChange: (keywords: string[]) => void;
   max?: number;
+  /**
+   * Trigger keywords are stored upper-case. Caption-rule terms are not — they
+   * are matched case-insensitively anyway, and shouting "#LAUNCH" back at
+   * someone who typed "#launch" reads as a bug.
+   */
+  uppercase?: boolean;
+  placeholder?: string;
+  /** Noun used in the hint line. */
+  noun?: string;
 }
 
-export default function KeywordInput({ keywords, onChange, max = 10 }: KeywordInputProps) {
+export default function KeywordInput({
+  keywords,
+  onChange,
+  max = 10,
+  uppercase = true,
+  placeholder,
+  noun = "keywords",
+}: KeywordInputProps) {
   const [input, setInput] = useState("");
 
   function addKeyword(value: string) {
-    const trimmed = value.trim().toUpperCase();
+    const trimmed = uppercase ? value.trim().toUpperCase() : value.trim();
     if (!trimmed) return;
     if (keywords.includes(trimmed)) return;
     if (keywords.length >= max) return;
@@ -64,12 +80,16 @@ export default function KeywordInput({ keywords, onChange, max = 10 }: KeywordIn
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={keywords.length === 0 ? "Type keyword and press Enter..." : ""}
+          placeholder={
+            keywords.length === 0
+              ? (placeholder ?? "Type keyword and press Enter...")
+              : ""
+          }
           className="flex-1 min-w-[120px] bg-transparent text-sm text-foreground placeholder:text-zinc-500 outline-none"
         />
       </div>
       <p className="text-xs text-muted">
-        {keywords.length}/{max} keywords · Press Enter or comma to add
+        {keywords.length}/{max} {noun} · Press Enter or comma to add
       </p>
     </div>
   );

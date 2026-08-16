@@ -33,6 +33,7 @@ import {
   reserveWorkspaceDMSend,
 } from "@/lib/billing/usage";
 import { recordWorkerAlert } from "@/lib/ops/worker-health";
+import { enrollNewMedia } from "@/lib/campaigns/enrollment";
 import {
   buildTrackedUrl,
   renderMessageWithTracking,
@@ -188,6 +189,59 @@ async function sendRevealDirectMessage(
   }
 }
 
+/**
+ * How directly a campaign targets the post a comment landed on.
+ *
+ * 2 — the post was picked by hand for this campaign
+ * 1 — a targeting rule (or the next-reel cron) enrolled it
+ * 0 — the campaign matches every post and never named this one
+ *
+ * Used only to order candidates for the one private reply Instagram permits per
+ * comment. Public replies are unaffected and still go out for every match.
+ */
+function matchSpecificity(automation: {
+  posts: { source: "MANUAL" | "RULE" | "NEXT_REEL" }[];
+}): number {
+  const source = automation.posts[0]?.source;
+  if (!source) return 0;
+  return source === "MANUAL" ? 2 : 1;
+}
+
+/**
+ * Give rule-driven campaigns a chance to claim a post the first time it appears.
+ *
+ * Best-effort by design: this sits in front of a DM that needs to go out, so a
+ * Graph hiccup here must not fail the job. Anything missed is picked up by the
+ * periodic sweep.
+ */
+async function maybeEnrollMedia(
+  instagramAccountId: string,
+  mediaId: string
+): Promise<void> {
+  try {
+    await enrollNewMedia({
+      instagramAccountId,
+      mediaId,
+      // Only resolved if this media has never been seen and a rule campaign
+      // exists — otherwise every comment would pay for a token lookup.
+      getAccessToken: async () => {
+        const account = await prisma.instagramAccount.findUnique({
+          where: { instagramId: instagramAccountId },
+          select: { accessToken: true },
+        });
+        if (!account?.accessToken) return null;
+        try {
+          return decryptToken(account.accessToken);
+        } catch {
+          return null;
+        }
+      },
+    });
+  } catch (error) {
+    console.error("[DM Worker] Rule enrollment check failed:", formatError(error));
+  }
+}
+
 async function processComment(job: Job<ProcessCommentJob>): Promise<void> {
   const {
     instagramAccountId,
@@ -199,10 +253,20 @@ async function processComment(job: Job<ProcessCommentJob>): Promise<void> {
   } = job.data;
   const requeueAttempt = job.data.requeueAttempt ?? 0;
 
+  // A campaign with a targeting rule should cover a brand new post immediately,
+  // not from the next sweep. The first time this media is ever seen, evaluate
+  // the account's rules against it and enroll before matching below. Marked in
+  // Redis, so this is one Graph call per new media, not one per comment.
+  await maybeEnrollMedia(instagramAccountId, mediaId);
+
   const automations = await prisma.automation.findMany({
     where: {
-      // Match campaigns bound to this specific post, plus any-post campaigns.
-      OR: [{ postId: mediaId }, { matchAnyPost: true }],
+      // Campaigns covering this post — picked by hand or enrolled by a rule —
+      // plus any-post campaigns.
+      OR: [
+        { posts: { some: { mediaId, excluded: false } } },
+        { matchAnyPost: true },
+      ],
       isActive: true,
       instagramAccount: {
         instagramId: instagramAccountId,
@@ -211,6 +275,13 @@ async function processComment(job: Job<ProcessCommentJob>): Promise<void> {
     include: {
       instagramAccount: true,
       workspace: true,
+      // 0 or 1 row — how this campaign came to cover this post, which is what
+      // decides who wins the comment's single private reply.
+      posts: {
+        where: { mediaId, excluded: false },
+        select: { source: true },
+        take: 1,
+      },
       trackedLinks: {
         select: {
           slug: true,
@@ -222,6 +293,17 @@ async function processComment(job: Job<ProcessCommentJob>): Promise<void> {
     },
     orderBy: { createdAt: "asc" },
   });
+
+  // Instagram allows exactly one private reply per comment, ever. When several
+  // campaigns match, the loop below gives it to whichever sends first — so the
+  // order here IS the conflict resolution. Most specific wins: a post picked by
+  // hand beats one a rule enrolled, which beats a catch-all "any post"
+  // campaign. createdAt keeps it stable within a tier.
+  automations.sort(
+    (a, b) =>
+      matchSpecificity(b) - matchSpecificity(a) ||
+      a.createdAt.getTime() - b.createdAt.getTime()
+  );
 
   for (const automation of automations) {
     // "Any word" campaigns fire on every comment; otherwise require a keyword hit.
@@ -274,6 +356,7 @@ async function processComment(job: Job<ProcessCommentJob>): Promise<void> {
           commenterName,
           commentText,
           commentId,
+          postId: mediaId,
           matchedKeyword: matchResult.matchedKeyword,
           status: "FAILED",
           errorMessage: "No Instagram access token available",
@@ -305,6 +388,7 @@ async function processComment(job: Job<ProcessCommentJob>): Promise<void> {
           commenterName,
           commentText,
           commentId,
+          postId: mediaId,
           matchedKeyword: matchResult.matchedKeyword,
           status: "FAILED",
           errorMessage: "Failed to decrypt Instagram access token",
@@ -330,6 +414,7 @@ async function processComment(job: Job<ProcessCommentJob>): Promise<void> {
           commenterName,
           commentText,
           commentId,
+          postId: mediaId,
           matchedKeyword: matchResult.matchedKeyword,
           status: "PENDING",
           attempts: job.attemptsMade + 1,

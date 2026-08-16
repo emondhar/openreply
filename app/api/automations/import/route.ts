@@ -62,11 +62,14 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const existing = await prisma.automation.findMany({
-    where: { instagramAccountId: account.id },
-    select: { postId: true },
+  // Every post already covered on this account. Reads the campaign-post rows
+  // rather than the legacy Automation.postId mirror, so a campaign covering a
+  // set is fully accounted for — the mirror only names its primary post.
+  const existing = await prisma.automationPost.findMany({
+    where: { excluded: false, automation: { instagramAccountId: account.id } },
+    select: { mediaId: true },
   });
-  const usedPostIds = new Set(existing.map((a) => a.postId));
+  const usedPostIds = new Set(existing.map((p) => p.mediaId));
 
   const created: { name: string; postId: string }[] = [];
   const skipped: { row: number; reason: string }[] = [];
@@ -92,8 +95,18 @@ export async function POST(request: NextRequest) {
       data: {
         name,
         goal: (campaign.goal ?? "").trim().slice(0, 120) || null,
+        // postId/postUrl are the legacy mirror; `posts` is what the worker
+        // actually matches on, so the row has to be created here too or an
+        // imported campaign would never fire.
         postId: campaign.postId,
         postUrl: campaign.postUrl ?? null,
+        posts: {
+          create: {
+            mediaId: campaign.postId,
+            source: "MANUAL",
+            permalink: campaign.postUrl ?? null,
+          },
+        },
         keywords: campaign.keywords,
         dmMessage: campaign.dmMessage.slice(0, 1000),
         publicReplyEnabled: Boolean(publicReply),

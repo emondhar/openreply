@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AccountSelect, { type AccountOption } from "@/components/account-select";
+import Checkbox from "@/components/checkbox";
 import { readCache, writeCache } from "@/lib/client-cache";
 import type { Campaign } from "@/lib/campaigns/data";
 
@@ -40,6 +41,9 @@ export default function CampaignsView({
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "paused">(
     "all"
   );
+  // Campaigns checked for a bulk action.
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   const fetchAutomations = useCallback(
     async (accountId: string) => {
@@ -62,6 +66,27 @@ export default function CampaignsView({
       }
     },
     []
+  );
+
+  // Thumbnails cached on the campaign's post rows. Instagram's CDN URLs are
+  // signed and expire, so these are a FALLBACK, not a replacement for the live
+  // fetch below: they cover posts outside the recent page the live fetch
+  // returns, which previously rendered nothing at all. The live URL always wins
+  // where both exist.
+  const storedThumbnails = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const auto of automations) {
+      for (const post of auto.posts ?? []) {
+        const url = post.thumbnailUrl ?? post.mediaUrl;
+        if (url) map[post.mediaId] = url;
+      }
+    }
+    return map;
+  }, [automations]);
+
+  const thumbFor = useCallback(
+    (mediaId: string) => thumbnails[mediaId] ?? storedThumbnails[mediaId],
+    [thumbnails, storedThumbnails]
   );
 
   // The thumbnail effect keys off the set of accounts in view, not the
@@ -202,8 +227,26 @@ export default function CampaignsView({
         body: JSON.stringify({
           name: `${auto.name} copy`,
           instagramAccountId: auto.instagramAccountId,
-          postId: specific ? auto.postId : null,
-          postUrl: specific ? auto.postUrl : null,
+          // Carry the whole post set, not just the primary — and its cached
+          // metadata, so the copy renders thumbnails immediately. The rule is
+          // deliberately not copied: two campaigns auto-enrolling the same posts
+          // is the overlap that costs one of them its DMs.
+          postIds: specific ? (auto.posts ?? []).map((p) => p.mediaId) : [],
+          postMeta: specific
+            ? Object.fromEntries(
+                (auto.posts ?? []).map((p) => [
+                  p.mediaId,
+                  {
+                    permalink: p.permalink,
+                    thumbnailUrl: p.thumbnailUrl,
+                    mediaUrl: p.mediaUrl,
+                    mediaType: p.mediaType,
+                    caption: p.caption,
+                    timestamp: p.postedAt,
+                  },
+                ])
+              )
+            : {},
           matchAnyPost: auto.matchAnyPost,
           pendingNextReel: auto.pendingNextReel,
           matchAnyWord: auto.matchAnyWord,
@@ -232,6 +275,43 @@ export default function CampaignsView({
     }
   }
 
+  /** Apply one mutation across every checked campaign, then clear the selection. */
+  async function bulkUpdate(action: "activate" | "pause" | "delete") {
+    const ids = [...selectedIds];
+    if (ids.length === 0) return;
+    if (
+      action === "delete" &&
+      !confirm(
+        `Delete ${ids.length} campaign${ids.length === 1 ? "" : "s"}? This cannot be undone.`
+      )
+    ) {
+      return;
+    }
+
+    setBulkBusy(true);
+    try {
+      const results = await Promise.allSettled(
+        ids.map((id) =>
+          action === "delete"
+            ? fetch(`/api/automations?id=${id}`, { method: "DELETE" })
+            : fetch(`/api/automations?id=${id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ isActive: action === "activate" }),
+              })
+        )
+      );
+      const failed = results.filter((r) => r.status === "rejected").length;
+      if (failed > 0) {
+        console.error(`Bulk ${action}: ${failed} of ${ids.length} failed`);
+      }
+      setSelectedIds(new Set());
+      await fetchAutomations(selectedAccountId);
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
   const query = search.trim().toLowerCase();
   const filtered = automations.filter((a) => {
     if (statusFilter === "active" && !a.isActive) return false;
@@ -243,6 +323,20 @@ export default function CampaignsView({
       a.dmMessage.toLowerCase().includes(query)
     );
   });
+
+  const allFilteredSelected =
+    filtered.length > 0 && filtered.every((a) => selectedIds.has(a.id));
+  const someFilteredSelected =
+    !allFilteredSelected && filtered.some((a) => selectedIds.has(a.id));
+
+  function toggleSelected(id: string, checked: boolean) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
 
   return (
     // Dimmed rather than replaced during an account switch: the list on screen
@@ -315,6 +409,55 @@ export default function CampaignsView({
         </div>
       )}
 
+      {/* Bulk selection bar. Select-all applies to what the filters currently
+          show, so a filtered "select all" never touches hidden campaigns. */}
+      {filtered.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-surface px-3 py-2 text-sm">
+          <label className="flex items-center gap-2 text-muted">
+            <Checkbox
+              checked={allFilteredSelected}
+              indeterminate={someFilteredSelected}
+              onChange={(checked) =>
+                setSelectedIds(checked ? new Set(filtered.map((a) => a.id)) : new Set())
+              }
+              label="Select all campaigns"
+            />
+            {selectedIds.size > 0
+              ? `${selectedIds.size} selected`
+              : `Select all ${filtered.length}`}
+          </label>
+          {selectedIds.size > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                disabled={bulkBusy}
+                onClick={() => void bulkUpdate("activate")}
+                className="rounded border border-border px-2.5 py-1 text-xs text-foreground hover:border-border-hover disabled:opacity-50"
+              >
+                Activate
+              </button>
+              <button
+                type="button"
+                disabled={bulkBusy}
+                onClick={() => void bulkUpdate("pause")}
+                className="rounded border border-border px-2.5 py-1 text-xs text-foreground hover:border-border-hover disabled:opacity-50"
+              >
+                Pause
+              </button>
+              <button
+                type="button"
+                disabled={bulkBusy}
+                onClick={() => void bulkUpdate("delete")}
+                className="rounded border border-error/40 px-2.5 py-1 text-xs text-error hover:border-error disabled:opacity-50"
+              >
+                Delete
+              </button>
+              {bulkBusy && <span className="text-xs text-muted">Working…</span>}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Empty state */}
       {automations.length === 0 && (
         <div className="panel rounded p-8 text-center sm:p-12">
@@ -341,7 +484,11 @@ export default function CampaignsView({
       {/* Campaign cards */}
       <div className="space-y-3">
         {filtered.map((auto) => {
-          const videoUrl = auto.postId ? videos[auto.postId] : undefined;
+          // Up to three tiles, then a +N chip. Cover posts come from the
+          // campaign's own rows, so a campaign on an older post still renders.
+          const coverPosts = (auto.posts ?? []).filter((p) => thumbFor(p.mediaId));
+          const shown = coverPosts.slice(0, 3);
+          const overflow = coverPosts.length - shown.length;
           return (
           <div
             key={auto.id}
@@ -351,56 +498,73 @@ export default function CampaignsView({
             {/* Wraps rather than compressing: on a phone the action buttons drop
                 to their own line instead of squeezing the campaign summary. */}
             <div className="flex flex-wrap items-start gap-x-4 gap-y-3">
-              {auto.postId && thumbnails[auto.postId] && (
-                videoUrl ? (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setPlayingVideo({ url: videoUrl, postUrl: auto.postUrl });
-                    }}
-                    aria-label="Play reel preview"
-                    className="shrink-0"
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={thumbnails[auto.postId]}
-                      alt="Campaign reel"
-                      width={48}
-                      height={48}
-                      loading="lazy"
-                      decoding="async"
-                      referrerPolicy="no-referrer"
-                      className="w-12 h-12 rounded object-cover border border-border hover:border-border-hover"
-                      onError={(e) => {
-                        e.currentTarget.style.display = "none";
-                      }}
-                    />
-                  </button>
-                ) : (
-                  <a
-                    href={auto.postUrl ?? "#"}
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="shrink-0"
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={thumbnails[auto.postId]}
-                      alt="Campaign post"
-                      width={48}
-                      height={48}
-                      loading="lazy"
-                      decoding="async"
-                      referrerPolicy="no-referrer"
-                      className="w-12 h-12 rounded object-cover border border-border"
-                      onError={(e) => {
-                        e.currentTarget.style.display = "none";
-                      }}
-                    />
-                  </a>
-                )
+              {/* stopPropagation so ticking a row doesn't also open it. */}
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="flex shrink-0 items-center pt-1"
+              >
+                <Checkbox
+                  checked={selectedIds.has(auto.id)}
+                  onChange={(checked) => toggleSelected(auto.id, checked)}
+                  label={`Select ${auto.name}`}
+                />
+              </div>
+              {shown.length > 0 && (
+                <div className="flex shrink-0 items-center gap-1">
+                  {shown.map((post) => {
+                    const videoUrl = videos[post.mediaId];
+                    const src = thumbFor(post.mediaId)!;
+                    const img = (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={src}
+                        alt={post.caption?.slice(0, 40) ?? "Campaign post"}
+                        width={48}
+                        height={48}
+                        loading="lazy"
+                        decoding="async"
+                        referrerPolicy="no-referrer"
+                        className="h-12 w-12 rounded border border-border object-cover hover:border-border-hover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                        }}
+                      />
+                    );
+                    return videoUrl ? (
+                      <button
+                        key={post.mediaId}
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPlayingVideo({ url: videoUrl, postUrl: post.permalink });
+                        }}
+                        aria-label="Play reel preview"
+                        className="shrink-0"
+                      >
+                        {img}
+                      </button>
+                    ) : (
+                      <a
+                        key={post.mediaId}
+                        href={post.permalink ?? "#"}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="shrink-0"
+                      >
+                        {img}
+                      </a>
+                    );
+                  })}
+                  {overflow > 0 && (
+                    <span
+                      title={`${coverPosts.length} posts in this campaign`}
+                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded border border-border bg-surface text-xs text-muted"
+                    >
+                      +{overflow}
+                    </span>
+                  )}
+                </div>
               )}
               <div className="min-w-[12rem] flex-1">
                 <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -420,6 +584,16 @@ export default function CampaignsView({
                   {auto.pendingNextReel && (
                     <span className="shrink-0 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-warning">
                       Waiting for next reel
+                    </span>
+                  )}
+                  {!auto.matchAnyPost && (auto.posts?.length ?? 0) > 1 && (
+                    <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-xs text-muted">
+                      {auto.posts.length} posts
+                    </span>
+                  )}
+                  {auto.postRule != null && (
+                    <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
+                      Auto-adding
                     </span>
                   )}
                   {auto.requireFollow && (

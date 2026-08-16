@@ -116,38 +116,56 @@ export async function getCampaignReportBySlug(shareSlug: string) {
       _count: row._count._all,
     }))
   );
-  const daily = await Promise.all(
-    Array.from({ length: 7 }, async (_, index) => {
-      const daysAgo = 6 - index;
-      const { start, end } = getDayWindow(daysAgo);
-      const [sent, clicks] = await Promise.all([
-        prisma.dmLog.count({
-          where: {
-            workspaceId: automation.workspaceId,
-            automationId: automation.id,
-            status: "SENT",
-            createdAt: { gte: start, lt: end },
-          },
-        }),
-        prisma.linkClick.count({
-          where: {
-            workspaceId: automation.workspaceId,
-            automationId: automation.id,
-            createdAt: { gte: start, lt: end },
-          },
-        }),
-      ]);
+  // The seven-day chart. This was fourteen count() calls — a sent count and a
+  // click count per day — on every view of a public report. Two bounded reads
+  // bucketed here do the same job, and keep the local-midnight boundaries the
+  // date labels imply (date_trunc would bucket in UTC).
+  const chartStart = getDayWindow(6).start;
+  const [sentRows, clickRows] = await Promise.all([
+    prisma.dmLog.findMany({
+      where: {
+        workspaceId: automation.workspaceId,
+        automationId: automation.id,
+        status: "SENT",
+        createdAt: { gte: chartStart },
+      },
+      select: { createdAt: true },
+    }),
+    prisma.linkClick.findMany({
+      where: {
+        workspaceId: automation.workspaceId,
+        automationId: automation.id,
+        createdAt: { gte: chartStart },
+      },
+      select: { createdAt: true },
+    }),
+  ]);
 
-      return {
-        date: start.toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-        }),
-        sent,
-        clicks,
-      };
-    })
-  );
+  const dayKey = (date: Date) =>
+    new Date(date.getFullYear(), date.getMonth(), date.getDate()).toDateString();
+  const countByDay = (rows: { createdAt: Date }[]) => {
+    const buckets = new Map<string, number>();
+    for (const row of rows) {
+      const key = dayKey(row.createdAt);
+      buckets.set(key, (buckets.get(key) ?? 0) + 1);
+    }
+    return buckets;
+  };
+  const sentByDay = countByDay(sentRows);
+  const clicksByDay = countByDay(clickRows);
+
+  const daily = Array.from({ length: 7 }, (_, index) => {
+    const { start } = getDayWindow(6 - index);
+    const key = start.toDateString();
+    return {
+      date: start.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      }),
+      sent: sentByDay.get(key) ?? 0,
+      clicks: clicksByDay.get(key) ?? 0,
+    };
+  });
 
   return {
     shareSlug: automation.reportShareSlug,

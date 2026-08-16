@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { Prisma } from "@/app/generated/prisma/client";
 import { getCurrentWorkspaceId } from "@/lib/auth";
 import { getCampaigns } from "@/lib/campaigns/data";
 import { prisma } from "@/lib/db/client";
 import { generateTrackedLinkSlug } from "@/lib/tracking/server";
 import { generateReportShareSlug } from "@/lib/reports/share";
+import { postIdsSchema, postMetaSchema, syncCampaignPosts } from "@/lib/campaigns/posts";
+import { postRuleSchema, ruleConditionsChanged, parsePostRule } from "@/lib/campaigns/post-rules";
+import { findOverlaps, notifyOverlaps } from "@/lib/campaigns/overlap";
 import {
   canManageWorkspace,
   getCurrentWorkspaceContext,
@@ -20,8 +24,18 @@ const createAutomationSchema = z
     name: z.string().min(1).max(100),
     goal: z.string().min(1).max(120).optional().nullable(),
     instagramAccountId: z.string().min(1).optional().nullable(),
+    // Legacy single-post fields. Still accepted so the CSV importer and any
+    // external caller keep working; normalized into postIds below.
     postId: z.string().min(1).optional().nullable(),
     postUrl: z.string().url().optional().nullable(),
+    // The posts this campaign covers, picked by hand.
+    postIds: postIdsSchema.optional().default([]),
+    // Graph metadata the picker already had, cached so rendering a campaign
+    // never needs to re-download the account's media list.
+    postMeta: z.record(z.string(), postMetaSchema).optional().default({}),
+    // Saved targeting rule that keeps enrolling matching posts. anchorAt is
+    // stamped server-side, so callers omit it.
+    postRule: postRuleSchema.omit({ anchorAt: true }).optional().nullable(),
     pendingNextReel: z.boolean().optional().default(false),
     matchAnyPost: z.boolean().optional().default(false),
     keywords: z.array(z.string().min(1).max(50)).max(10).optional().default([]),
@@ -61,10 +75,15 @@ const createAutomationSchema = z
     isActive: z.boolean().optional().default(true),
     wholeWordMatch: z.boolean().optional().default(true),
   })
-  // A campaign must target a specific post, any post, or the next reel.
+  // A campaign must target some posts, a rule, any post, or the next reel.
   .refine(
-    (d) => d.matchAnyPost || d.pendingNextReel || Boolean(d.postId),
-    { message: "Choose which post(s) trigger the campaign", path: ["postId"] }
+    (d) =>
+      d.matchAnyPost ||
+      d.pendingNextReel ||
+      Boolean(d.postId) ||
+      d.postIds.length > 0 ||
+      Boolean(d.postRule),
+    { message: "Choose which post(s) trigger the campaign", path: ["postIds"] }
   )
   // And it must match either specific words or any word.
   .refine((d) => d.matchAnyWord || d.keywords.length >= 1, {
@@ -85,6 +104,11 @@ const updateAutomationSchema = z.object({
   goal: z.string().min(1).max(120).optional().nullable(),
   postId: z.string().min(1).optional().nullable(),
   postUrl: z.string().url().optional().nullable(),
+  postIds: postIdsSchema.optional(),
+  postMeta: z.record(z.string(), postMetaSchema).optional(),
+  /** Drop these from the campaign, whatever added them. */
+  excludePostIds: postIdsSchema.optional(),
+  postRule: postRuleSchema.omit({ anchorAt: true }).optional().nullable(),
   pendingNextReel: z.boolean().optional(),
   matchAnyPost: z.boolean().optional(),
   keywords: z.array(z.string().min(1).max(50)).max(10).optional(),
@@ -237,8 +261,28 @@ export async function POST(request: NextRequest) {
 
   const { pendingNextReel, matchAnyPost, matchAnyWord, openingDmEnabled } =
     parsed.data;
-  // A post is only stored for the "specific post" trigger.
+  // Posts are only stored for the "specific posts" trigger.
   const isSpecificPost = !pendingNextReel && !matchAnyPost;
+  // `postId` is the legacy single-post field; fold it into the set so old
+  // callers (the CSV importer) behave identically to the picker.
+  const selectedPostIds = isSpecificPost
+    ? [
+        ...new Set(
+          [...parsed.data.postIds, parsed.data.postId].filter(
+            (id): id is string => Boolean(id)
+          )
+        ),
+      ]
+    : [];
+  const postMeta = { ...parsed.data.postMeta };
+  if (parsed.data.postId && parsed.data.postUrl && !postMeta[parsed.data.postId]) {
+    postMeta[parsed.data.postId] = { permalink: parsed.data.postUrl };
+  }
+  // A rule only makes sense alongside a real post set, not a catch-all.
+  const postRule =
+    isSpecificPost && parsed.data.postRule
+      ? { ...parsed.data.postRule, anchorAt: new Date().toISOString() }
+      : null;
   const publicReplyList = (
     parsed.data.publicReplyMessages.length > 0
       ? parsed.data.publicReplyMessages
@@ -253,9 +297,12 @@ export async function POST(request: NextRequest) {
     data: {
       name: parsed.data.name,
       goal: parsed.data.goal,
-      // A next-reel campaign has no post yet; the cron binds it once a reel is posted.
-      postId: isSpecificPost ? parsed.data.postId : null,
-      postUrl: isSpecificPost ? parsed.data.postUrl : null,
+      // Mirror of the primary post, rewritten from the real set right after
+      // create. A next-reel campaign has no post yet; the cron binds one once a
+      // reel is posted.
+      postId: null,
+      postUrl: null,
+      postRule: postRule ?? undefined,
       pendingNextReel,
       matchAnyPost,
       keywords: matchAnyWord ? [] : parsed.data.keywords,
@@ -305,8 +352,42 @@ export async function POST(request: NextRequest) {
     },
   });
 
+  const synced = await syncCampaignPosts({
+    automationId: automation.id,
+    postIds: selectedPostIds,
+    postMeta,
+  });
+
+  // Keep the legacy mirror pointing at the primary post.
+  if (synced.primary.postId) {
+    await prisma.automation.update({
+      where: { id: automation.id },
+      data: synced.primary,
+    });
+  }
+
+  // Instagram allows one private reply per comment, ever — so a post covered by
+  // two campaigns means one of them will quietly stop sending. Surface it
+  // rather than letting the owner discover it in the logs.
+  const overlaps = await findOverlaps({
+    instagramAccountId: instagramAccount.id,
+    automationId: automation.id,
+    mediaIds: synced.mediaIds,
+  });
+  await notifyOverlaps({
+    workspaceId,
+    automationId: automation.id,
+    campaignName: automation.name,
+    overlaps,
+    trigger: "save",
+  });
+
   return NextResponse.json(
-    { success: true, data: automation },
+    {
+      success: true,
+      data: { ...automation, ...synced.primary, postIds: synced.mediaIds },
+      overlaps,
+    },
     { status: 201 }
   );
 }
@@ -366,6 +447,11 @@ export async function PATCH(request: NextRequest) {
     trackedDestinationUrl,
     secondaryDestinationUrl,
     secondaryButtonLabel,
+    // The post set lives in AutomationPost rows, not on the automation.
+    postIds,
+    postMeta,
+    excludePostIds,
+    postRule,
     ...automationData
   } = parsed.data;
 
@@ -384,10 +470,29 @@ export async function PATCH(request: NextRequest) {
     automationData.followUpMessage = null;
     automationData.followUpDelayMinutes = 0;
   }
-  // Any-post / next-reel campaigns carry no specific post.
-  if (automationData.matchAnyPost === true || automationData.pendingNextReel === true) {
+  // Any-post / next-reel campaigns carry no specific posts. Clear the whole set,
+  // not just the legacy mirror, or the campaign would keep matching them.
+  const clearPosts =
+    automationData.matchAnyPost === true || automationData.pendingNextReel === true;
+  if (clearPosts) {
     automationData.postId = null;
     automationData.postUrl = null;
+  }
+
+  // Re-stamp the rule's anchor only when its conditions actually changed.
+  // Editing an unrelated field must not move a "future posts only" cutoff
+  // forward and orphan everything it had already enrolled.
+  let nextRule: Prisma.InputJsonValue | typeof Prisma.DbNull | undefined;
+  if (postRule !== undefined) {
+    if (postRule === null || clearPosts) {
+      nextRule = Prisma.DbNull;
+    } else {
+      const current = parsePostRule(existing.postRule);
+      const candidate = { ...postRule, anchorAt: current?.anchorAt ?? new Date().toISOString() };
+      nextRule = ruleConditionsChanged(current, candidate)
+        ? { ...candidate, anchorAt: new Date().toISOString() }
+        : candidate;
+    }
   }
   // Keep the public-reply variations list and the legacy single field in sync.
   if (automationData.publicReplyMessages !== undefined) {
@@ -404,8 +509,48 @@ export async function PATCH(request: NextRequest) {
 
   const updated = await prisma.automation.update({
     where: { id: automationId },
-    data: automationData,
+    data: {
+      ...automationData,
+      ...(nextRule !== undefined ? { postRule: nextRule } : {}),
+    },
   });
+
+  // Reconcile the post set. Switching to any-post/next-reel drops every post;
+  // otherwise an omitted postIds means "leave the set alone".
+  let overlaps: Awaited<ReturnType<typeof findOverlaps>> = [];
+  if (clearPosts) {
+    await prisma.automationPost.deleteMany({ where: { automationId } });
+  } else if (postIds !== undefined || excludePostIds !== undefined) {
+    const existingManual = await prisma.automationPost.findMany({
+      where: { automationId, source: "MANUAL" },
+      select: { mediaId: true },
+    });
+    const synced = await syncCampaignPosts({
+      automationId,
+      postIds: postIds ?? existingManual.map((r) => r.mediaId),
+      postMeta,
+      excludePostIds,
+    });
+    await prisma.automation.update({
+      where: { id: automationId },
+      data: synced.primary,
+    });
+
+    if (synced.added.length > 0) {
+      overlaps = await findOverlaps({
+        instagramAccountId: existing.instagramAccountId,
+        automationId,
+        mediaIds: synced.added,
+      });
+      await notifyOverlaps({
+        workspaceId,
+        automationId,
+        campaignName: updated.name,
+        overlaps,
+        trigger: "save",
+      });
+    }
+  }
 
   // Update, create, or clear the campaign's primary tracked link when a
   // destination URL was supplied. `undefined` means "leave it alone".

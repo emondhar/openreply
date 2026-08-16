@@ -13,11 +13,31 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import CampaignPreview, { type PreviewTab } from "@/components/campaign-preview";
 
+interface CampaignPostStats {
+  mediaId: string;
+  source: "MANUAL" | "RULE" | "NEXT_REEL";
+  permalink: string | null;
+  thumbnailUrl: string | null;
+  mediaUrl: string | null;
+  mediaType: string | null;
+  caption: string | null;
+  postedAt: string | null;
+  sent: number;
+  skipped: number;
+  failed: number;
+  total: number;
+}
+
 interface Campaign {
   id: string;
   name: string;
   postId: string | null;
   postUrl: string | null;
+  posts: CampaignPostStats[];
+  postStats: CampaignPostStats[];
+  postRule: unknown;
+  unattributed: { sent: number; skipped: number; failed: number; total: number };
+  series: { date: string; sent: number; total: number }[];
   pendingNextReel: boolean;
   matchAnyPost: boolean;
   keywords: string[];
@@ -51,6 +71,7 @@ interface Campaign {
     failed: number;
     clicks: number;
     ctr: number;
+    topKeywords: { keyword: string; count: number }[];
   };
 }
 
@@ -64,19 +85,21 @@ export default function CampaignDetailPage() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [postThumb, setPostThumb] = useState<string | null>(null);
+  // Instagram's CDN URLs are signed and expire, so the cached thumbnail is only
+  // a first paint — the live fetch below supersedes it when it lands.
+  const [freshThumb, setFreshThumb] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("insights");
   const [previewTab, setPreviewTab] = useState<PreviewTab>("dm");
   const [busy, setBusy] = useState(false);
 
+  // One campaign, with its per-post and time-series breakdowns. This used to
+  // fetch every campaign in the workspace and pick one out of the array.
   useEffect(() => {
-    fetch("/api/automations", { cache: "no-store" })
+    fetch(`/api/automations/${id}`, { cache: "no-store" })
       .then((r) => r.json())
       .then((payload) => {
         if (!payload.success) return setNotFound(true);
-        const found = (payload.data as Campaign[]).find((c) => c.id === id);
-        if (!found) return setNotFound(true);
-        setCampaign(found);
+        setCampaign(payload.data as Campaign);
       })
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
@@ -92,7 +115,8 @@ export default function CampaignDetailPage() {
       )
       .catch(() => setAvatarUrl(null));
 
-    if (campaign.postId) {
+    const primary = campaign.posts?.[0];
+    if (primary) {
       fetch(`/api/instagram/posts?instagramAccountId=${acct}&limit=50`)
         .then((r) => r.json())
         .then((payload) => {
@@ -103,10 +127,11 @@ export default function CampaignDetailPage() {
               thumbnail_url?: string;
               media_url?: string;
             }[]
-          ).find((p) => p.id === campaign.postId);
-          setPostThumb(hit?.thumbnail_url ?? hit?.media_url ?? null);
+          ).find((p) => p.id === primary.mediaId);
+          const fresh = hit?.thumbnail_url ?? hit?.media_url;
+          if (fresh) setFreshThumb(fresh);
         })
-        .catch(() => setPostThumb(null));
+        .catch(() => {});
     }
   }, [campaign]);
 
@@ -166,6 +191,11 @@ export default function CampaignDetailPage() {
     { label: "CTR", value: `${campaign.analytics.ctr}%` },
     { label: "Failed", value: campaign.analytics.failed },
   ];
+
+  // Cached URL paints first; the freshly fetched one wins once it arrives.
+  const primaryPost = campaign.posts?.[0];
+  const postThumb =
+    freshThumb ?? primaryPost?.thumbnailUrl ?? primaryPost?.mediaUrl ?? null;
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,340px)_1fr]">
@@ -324,15 +354,43 @@ export default function CampaignDetailPage() {
         </div>
 
         {tab === "insights" && (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            {metrics.map((m) => (
-              <div key={m.label} className="panel rounded p-4">
-                <p className="text-sm text-muted">{m.label}</p>
-                <p className="mt-1 text-2xl font-semibold text-foreground">
-                  {m.value}
-                </p>
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              {metrics.map((m) => (
+                <div key={m.label} className="panel rounded p-4">
+                  <p className="text-sm text-muted">{m.label}</p>
+                  <p className="mt-1 text-2xl font-semibold text-foreground">
+                    {m.value}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <ActivityChart series={campaign.series ?? []} />
+
+            {(campaign.analytics.topKeywords ?? []).length > 0 && (
+              <div className="panel rounded p-4">
+                <h3 className="text-sm font-semibold text-foreground">
+                  Top keywords
+                </h3>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {campaign.analytics.topKeywords.map((k) => (
+                    <span
+                      key={k.keyword}
+                      className="rounded-full border border-border px-2.5 py-1 text-xs text-muted"
+                    >
+                      {k.keyword}
+                      <span className="ml-1.5 text-foreground">{k.count}</span>
+                    </span>
+                  ))}
+                </div>
               </div>
-            ))}
+            )}
+
+            <PostBreakdown
+              posts={campaign.postStats ?? []}
+              unattributed={campaign.unattributed}
+            />
           </div>
         )}
 
@@ -375,6 +433,156 @@ export default function CampaignDetailPage() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Which post actually drove the DMs.
+ *
+ * Only meaningful because DmLog carries the media id — with one post per
+ * campaign it was implied by the campaign itself and there was nothing to break
+ * down.
+ */
+function PostBreakdown({
+  posts,
+  unattributed,
+}: {
+  posts: CampaignPostStats[];
+  unattributed?: { sent: number; total: number };
+}) {
+  if (posts.length === 0) return null;
+
+  const best = posts[0]?.sent ?? 0;
+
+  return (
+    <div className="panel rounded p-4">
+      <h3 className="text-sm font-semibold text-foreground">
+        Per-post results
+        <span className="ml-2 font-normal text-muted">
+          {posts.length} post{posts.length === 1 ? "" : "s"}
+        </span>
+      </h3>
+      {/* Scrolls inside itself so a narrow screen never scrolls the page. */}
+      <div className="mt-3 -mx-4 overflow-x-auto px-4">
+        <table className="w-full min-w-125 text-sm">
+          <thead>
+            <tr className="border-b border-border text-left text-xs text-muted">
+              <th className="py-2 pr-3 font-medium">Post</th>
+              <th className="py-2 pr-3 font-medium">Added</th>
+              <th className="py-2 pr-3 text-right font-medium">Sent</th>
+              <th className="py-2 pr-3 text-right font-medium">Skipped</th>
+              <th className="py-2 text-right font-medium">Failed</th>
+            </tr>
+          </thead>
+          <tbody>
+            {posts.map((post) => {
+              const thumb = post.thumbnailUrl ?? post.mediaUrl;
+              return (
+                <tr key={post.mediaId} className="border-b border-border/50">
+                  <td className="py-2 pr-3">
+                    <a
+                      href={post.permalink ?? "#"}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-2 hover:text-accent"
+                    >
+                      {thumb ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
+                          src={thumb}
+                          alt=""
+                          width={32}
+                          height={32}
+                          loading="lazy"
+                          referrerPolicy="no-referrer"
+                          className="h-8 w-8 shrink-0 rounded border border-border object-cover"
+                          onError={(e) => {
+                            e.currentTarget.style.visibility = "hidden";
+                          }}
+                        />
+                      ) : (
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border bg-surface text-[10px] text-muted">
+                          {post.mediaType?.[0] ?? "?"}
+                        </span>
+                      )}
+                      <span className="line-clamp-1 max-w-[16rem] text-xs">
+                        {post.caption?.slice(0, 60) || post.mediaId}
+                      </span>
+                    </a>
+                  </td>
+                  <td className="py-2 pr-3 text-xs text-muted">
+                    {post.source === "MANUAL"
+                      ? "By hand"
+                      : post.source === "RULE"
+                        ? "By rule"
+                        : "Next reel"}
+                  </td>
+                  <td className="py-2 pr-3 text-right">
+                    <span className="inline-flex items-center gap-2">
+                      {/* Bar relative to the best post, so the winner is obvious
+                          without reading every number. */}
+                      <span
+                        aria-hidden
+                        className="hidden h-1.5 rounded-full bg-accent/40 sm:block"
+                        style={{
+                          width: best > 0 ? `${Math.round((post.sent / best) * 48)}px` : 0,
+                        }}
+                      />
+                      <span className="text-foreground">{post.sent}</span>
+                    </span>
+                  </td>
+                  <td className="py-2 pr-3 text-right text-muted">{post.skipped}</td>
+                  <td className="py-2 text-right text-muted">{post.failed}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      {unattributed && unattributed.total > 0 && (
+        <p className="mt-3 text-xs text-muted">
+          {unattributed.sent} sent from the DM trigger, which has no post attached.
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Runs per day over the campaign's recent history. */
+function ActivityChart({
+  series,
+}: {
+  series: { date: string; sent: number; total: number }[];
+}) {
+  if (series.length === 0) return null;
+  const peak = Math.max(...series.map((d) => d.total), 1);
+  const hasActivity = series.some((d) => d.total > 0);
+
+  return (
+    <div className="panel rounded p-4">
+      <h3 className="text-sm font-semibold text-foreground">Activity</h3>
+      {hasActivity ? (
+        <div className="mt-4 flex h-28 items-end gap-1">
+          {series.map((day) => (
+            <div
+              key={day.date}
+              title={`${day.date}: ${day.sent} sent of ${day.total} runs`}
+              className="flex flex-1 flex-col items-center gap-1"
+            >
+              <div className="flex w-full flex-1 items-end">
+                <div
+                  className="w-full rounded-t bg-accent/70"
+                  style={{ height: `${Math.round((day.sent / peak) * 100)}%` }}
+                />
+              </div>
+              <span className="text-[10px] text-muted">{day.date.split(" ")[1]}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-3 text-sm text-muted">No runs yet in this window.</p>
+      )}
     </div>
   );
 }

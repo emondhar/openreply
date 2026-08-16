@@ -13,12 +13,26 @@ export type CampaignAnalytics = {
   topKeywords: { keyword: string; count: number }[];
 };
 
+export type CampaignPost = {
+  mediaId: string;
+  source: "MANUAL" | "RULE" | "NEXT_REEL";
+  permalink: string | null;
+  thumbnailUrl: string | null;
+  mediaUrl: string | null;
+  mediaType: string | null;
+  caption: string | null;
+  postedAt: string | null;
+};
+
 export type Campaign = {
   id: string;
   name: string;
   goal: string | null;
+  /** Legacy mirror of the primary post. Prefer `posts`. */
   postId: string | null;
   postUrl: string | null;
+  posts: CampaignPost[];
+  postRule: unknown;
   pendingNextReel: boolean;
   matchAnyPost: boolean;
   keywords: string[];
@@ -83,6 +97,24 @@ export const getCampaigns = cache(
               select: { username: true, instagramId: true },
             },
             _count: { select: { dmLogs: true } },
+            // Metadata is cached on the row, so the list renders thumbnails
+            // without downloading the account's media library per account —
+            // which also meant a post outside the most recent page rendered
+            // nothing at all.
+            posts: {
+              where: { excluded: false },
+              select: {
+                mediaId: true,
+                source: true,
+                permalink: true,
+                thumbnailUrl: true,
+                mediaUrl: true,
+                mediaType: true,
+                caption: true,
+                postedAt: true,
+              },
+              orderBy: [{ postedAt: "desc" }, { addedAt: "desc" }],
+            },
             trackedLinks: {
               select: {
                 id: true,
@@ -179,6 +211,10 @@ export const getCampaigns = cache(
       return {
         ...automation,
         createdAt: automation.createdAt.toISOString(),
+        posts: automation.posts.map((post) => ({
+          ...post,
+          postedAt: post.postedAt?.toISOString() ?? null,
+        })),
         trackedLinks: automation.trackedLinks.map((link) => ({
           ...link,
           trackedUrl: buildTrackedUrl(link.slug),

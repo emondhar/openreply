@@ -15,9 +15,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import AccountSelect, { type AccountOption } from "@/components/account-select";
-import PostPicker from "@/components/post-picker";
+import PostPicker, {
+  toPostMeta,
+  type InstagramPost,
+} from "@/components/post-picker";
 import CampaignPreview, { type PreviewTab } from "@/components/campaign-preview";
 import { readCache, writeCache } from "@/lib/client-cache";
+import { parsePostRule, type PostRule } from "@/lib/campaigns/post-rules";
 import {
   IMPORT_QUEUE_KEY,
   IMPORT_ACCOUNT_KEY,
@@ -26,12 +30,23 @@ import {
 
 type TriggerScope = "specific" | "any" | "next";
 type MatchMode = "specific" | "any";
+type PostMetaValue = ReturnType<typeof toPostMeta>[string];
+
+interface LoadedPost {
+  mediaId: string;
+  source: "MANUAL" | "RULE" | "NEXT_REEL";
+  permalink: string | null;
+  thumbnailUrl: string | null;
+  caption: string | null;
+}
 
 interface LoadedCampaign {
   id: string;
   name: string;
   postId: string | null;
   postUrl: string | null;
+  posts?: LoadedPost[];
+  postRule?: unknown;
   pendingNextReel: boolean;
   matchAnyPost: boolean;
   keywords: string[];
@@ -145,15 +160,23 @@ export default function CampaignBuilder({ mode, campaignId }: CampaignBuilderPro
   const [isActive, setIsActive] = useState(true);
 
   const [triggerScope, setTriggerScope] = useState<TriggerScope>("specific");
-  const [postId, setPostId] = useState<string | null>(null);
-  const [postUrl, setPostUrl] = useState<string | null>(null);
+  // The posts picked by hand. Posts a rule enrolled live in `rulePostIds` and
+  // are never removed by a save — the rule owns those.
+  const [postIds, setPostIds] = useState<string[]>([]);
+  const [postMeta, setPostMeta] = useState<Record<string, PostMetaValue>>({});
+  const [rulePostIds, setRulePostIds] = useState<string[]>([]);
+  const [postRule, setPostRule] = useState<PostRule | null>(null);
+  // Preview fields for the first selected post, used by the phone mockup.
   const [postThumb, setPostThumb] = useState<string | null>(null);
   const [postCaption, setPostCaption] = useState("");
 
-  // Post IDs already tied to another automation on this account, so the picker
-  // can flag them and the user knows not to double-assign. Maps postId ->
-  // the campaign name using it (for the tooltip).
+  // Post IDs already covered by another campaign on this account, so the picker
+  // can flag them. Overlap is legal now that campaigns cover sets — but only one
+  // campaign can send the single private reply Instagram allows per comment, so
+  // it is still worth surfacing. Maps postId -> the campaign name covering it.
   const [usedPosts, setUsedPosts] = useState<Record<string, string>>({});
+  // Overlaps the server found on the last save, listed back to the user.
+  const [overlapWarning, setOverlapWarning] = useState<string | null>(null);
 
   const [matchMode, setMatchMode] = useState<MatchMode>("specific");
   const [keywordText, setKeywordText] = useState("");
@@ -243,22 +266,33 @@ export default function CampaignBuilder({ mode, campaignId }: CampaignBuilderPro
       .catch(() => setAccounts([]));
   }, []);
 
-  // Prefill when editing.
+  // Prefill when editing. Fetches the one campaign rather than the whole list —
+  // with a post set and per-post stats attached, pulling every campaign to pick
+  // one out of it is a lot of wasted payload.
   useEffect(() => {
     if (mode !== "edit" || !campaignId) return;
-    fetch("/api/automations", { cache: "no-store" })
+    fetch(`/api/automations/${campaignId}`, { cache: "no-store" })
       .then((r) => r.json())
       .then((payload) => {
         if (!payload.success) return setNotFound(true);
-        const c = (payload.data as LoadedCampaign[]).find((x) => x.id === campaignId);
+        const c = payload.data as LoadedCampaign;
         if (!c) return setNotFound(true);
         setName(c.name);
         setSelectedAccountId(c.instagramAccountId);
         setTriggerScope(
           c.matchAnyPost ? "any" : c.pendingNextReel ? "next" : "specific"
         );
-        setPostId(c.postId);
-        setPostUrl(c.postUrl);
+        // Manual picks are editable; rule-enrolled posts are shown as covered
+        // but are the rule's to add and remove.
+        const loaded = c.posts ?? [];
+        setPostIds(loaded.filter((p) => p.source === "MANUAL").map((p) => p.mediaId));
+        setRulePostIds(
+          loaded.filter((p) => p.source !== "MANUAL").map((p) => p.mediaId)
+        );
+        setPostRule(parsePostRule(c.postRule));
+        const primary = loaded[0];
+        setPostThumb(primary?.thumbnailUrl ?? null);
+        setPostCaption(primary?.caption ?? "");
         setMatchMode(c.matchAnyWord ? "any" : "specific");
         setKeywordText(c.keywords.join(", "));
         setDmTriggerEnabled(c.dmTriggerEnabled ?? false);
@@ -296,9 +330,10 @@ export default function CampaignBuilder({ mode, campaignId }: CampaignBuilderPro
       .finally(() => setLoading(false));
   }, [mode, campaignId]);
 
-  // Track which posts on the selected account are already assigned to an
-  // automation, so the picker can highlight them. The campaign being edited is
-  // excluded — its own post should read as selected, not "taken".
+  // Track which posts on the selected account another campaign already covers,
+  // so the picker can flag them. The campaign being edited is excluded — its own
+  // posts should read as selected, not "taken". Fans out over each campaign's
+  // whole post set now that one campaign can cover many.
   useEffect(() => {
     if (!selectedAccountId) return;
     let cancelled = false;
@@ -308,10 +343,11 @@ export default function CampaignBuilder({ mode, campaignId }: CampaignBuilderPro
         if (cancelled || !payload.success) return;
         const map: Record<string, string> = {};
         for (const a of payload.data as LoadedCampaign[]) {
-          if (!a.postId) continue;
           if (a.instagramAccountId !== selectedAccountId) continue;
           if (mode === "edit" && a.id === campaignId) continue;
-          map[a.postId] = a.name;
+          for (const post of a.posts ?? []) {
+            map[post.mediaId] = a.name;
+          }
         }
         setUsedPosts(map);
       })
@@ -326,8 +362,10 @@ export default function CampaignBuilder({ mode, campaignId }: CampaignBuilderPro
   function prefillFromRow(row: ImportRow) {
     setName(row.name ?? "");
     setTriggerScope("specific");
-    setPostId(null);
-    setPostUrl(null);
+    setPostIds([]);
+    setPostMeta({});
+    setRulePostIds([]);
+    setPostRule(null);
     setPostThumb(null);
     setPostCaption("");
     setMatchMode("specific");
@@ -370,16 +408,17 @@ export default function CampaignBuilder({ mode, campaignId }: CampaignBuilderPro
   const username =
     accounts.find((a) => a.id === selectedAccountId)?.username ?? "yourbrand";
 
-  function handlePostSelect(
-    id: string,
-    url?: string,
-    thumb?: string,
-    caption?: string
-  ) {
-    setPostId(id);
-    setPostUrl(url ?? null);
-    setPostThumb(thumb ?? null);
-    setPostCaption(caption ?? "");
+  /**
+   * The picker owns the selection; this records it along with the Graph
+   * metadata so the server can cache thumbnails without calling Instagram
+   * again. The first post also drives the phone preview.
+   */
+  function handleSelectionChange(ids: string[], posts: InstagramPost[]) {
+    setPostIds(ids);
+    setPostMeta((cur) => ({ ...cur, ...toPostMeta(posts) }));
+    const primary = posts[0];
+    setPostThumb(primary?.thumbnail_url ?? primary?.media_url ?? null);
+    setPostCaption(primary?.caption ?? "");
   }
 
   function ensureLinkToken() {
@@ -390,8 +429,12 @@ export default function CampaignBuilder({ mode, campaignId }: CampaignBuilderPro
     setError(null);
 
     if (!selectedAccountId) return setError("Connect an Instagram account first.");
-    if (triggerScope === "specific" && !postId)
-      return setError("Pick a post or reel to trigger the campaign.");
+    // A rule alone is a valid target: it may legitimately match nothing today
+    // (a "future posts only" rule always does) and still be correct.
+    if (triggerScope === "specific" && postIds.length === 0 && !postRule)
+      return setError(
+        "Pick at least one post or reel, or set a rule, to trigger the campaign."
+      );
     if (matchMode === "specific" && keywords.length === 0)
       return setError("Add at least one keyword, or switch to any word.");
     if (!dmMessage.trim()) return setError("Add the DM with the link.");
@@ -403,8 +446,9 @@ export default function CampaignBuilder({ mode, campaignId }: CampaignBuilderPro
     const payload = {
       name: name.trim() || `Campaign for @${username}`,
       instagramAccountId: selectedAccountId,
-      postId: triggerScope === "specific" ? postId : null,
-      postUrl: triggerScope === "specific" ? postUrl : null,
+      postIds: triggerScope === "specific" ? postIds : [],
+      postMeta: triggerScope === "specific" ? postMeta : {},
+      postRule: triggerScope === "specific" ? postRule : null,
       matchAnyPost: triggerScope === "any",
       pendingNextReel: triggerScope === "next",
       matchAnyWord: matchMode === "any",
@@ -448,14 +492,32 @@ export default function CampaignBuilder({ mode, campaignId }: CampaignBuilderPro
             });
       const data = await res.json();
       if (data.success) {
-        // The post we just assigned is now in use. Reflect it immediately so
-        // the picker flags it on the next imported row — the fetch that builds
+        // The posts we just assigned are now in use. Reflect that immediately so
+        // the picker flags them on the next imported row — the fetch that builds
         // this map doesn't re-run while the builder stays mounted through the
         // import queue.
-        if (triggerScope === "specific" && postId) {
-          const assignedPostId = postId;
-          setUsedPosts((prev) => ({ ...prev, [assignedPostId]: payload.name }));
+        if (triggerScope === "specific" && postIds.length > 0) {
+          const assigned = postIds;
+          setUsedPosts((prev) => {
+            const next = { ...prev };
+            for (const id of assigned) next[id] = payload.name;
+            return next;
+          });
         }
+        // Instagram allows one private reply per comment, ever, so a post two
+        // campaigns both cover means only one of them will send. The server
+        // emails about it; say so here too rather than letting it pass silently.
+        const overlaps = (data.overlaps ?? []) as {
+          mediaId: string;
+          campaigns: { name: string }[];
+        }[];
+        setOverlapWarning(
+          overlaps.length > 0
+            ? `${overlaps.length} of these posts ${overlaps.length === 1 ? "is" : "are"} also covered by ${[
+                ...new Set(overlaps.flatMap((o) => o.campaigns.map((c) => c.name))),
+              ].join(", ")}. Only the most specific campaign can send the one DM Instagram allows per comment — we've emailed you the details.`
+            : null
+        );
         // Importing: advance to the next queued row instead of leaving.
         if (importQueue && importQueue.length > 1) {
           const remaining = importQueue.slice(1);
@@ -638,6 +700,20 @@ export default function CampaignBuilder({ mode, campaignId }: CampaignBuilderPro
           </div>
         )}
 
+        {overlapWarning && (
+          <div className="flex items-start justify-between gap-3 rounded border border-warning/30 bg-warning/10 p-3 text-sm text-foreground">
+            <p>{overlapWarning}</p>
+            <button
+              type="button"
+              onClick={() => setOverlapWarning(null)}
+              aria-label="Dismiss"
+              className="shrink-0 text-muted hover:text-foreground"
+            >
+              ×
+            </button>
+          </div>
+        )}
+
         <div className="space-y-3">
           <label className="text-sm font-semibold text-foreground">
             Campaign name{" "}
@@ -657,8 +733,10 @@ export default function CampaignBuilder({ mode, campaignId }: CampaignBuilderPro
                 value={selectedAccountId}
                 onChange={(id) => {
                   setSelectedAccountId(id);
-                  setPostId(null);
-                  setPostUrl(null);
+                  // The picked posts belong to the old account's library.
+                  setPostIds([]);
+                  setPostMeta({});
+                  setRulePostIds([]);
                   setPostThumb(null);
                 }}
                 includeAll={false}
@@ -678,10 +756,13 @@ export default function CampaignBuilder({ mode, campaignId }: CampaignBuilderPro
           {triggerScope === "specific" && (
             <div className="rounded-lg border border-border p-2">
               <PostPicker
-                selectedPostId={postId}
+                selectedPostIds={postIds}
                 instagramAccountId={selectedAccountId}
                 usedPostIds={usedPosts}
-                onSelect={handlePostSelect}
+                rulePostIds={rulePostIds}
+                rule={postRule}
+                onRuleChange={setPostRule}
+                onSelectionChange={handleSelectionChange}
               />
             </div>
           )}

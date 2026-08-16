@@ -76,11 +76,32 @@ export async function GET(request: NextRequest) {
       );
       if (!nextReel) continue;
 
+      // A campaign can cover many posts, so the reel is appended as a row
+      // rather than assigned. postId/postUrl stay in sync as the legacy mirror
+      // of the primary post.
+      await prisma.automationPost.upsert({
+        where: {
+          automationId_mediaId: { automationId: automation.id, mediaId: nextReel.id },
+        },
+        create: {
+          automationId: automation.id,
+          mediaId: nextReel.id,
+          source: "NEXT_REEL",
+          permalink: nextReel.permalink ?? null,
+          thumbnailUrl: nextReel.thumbnail_url ?? nextReel.media_url ?? null,
+          mediaUrl: nextReel.media_url ?? null,
+          mediaType: "REEL",
+          caption: nextReel.caption ?? null,
+          postedAt: new Date(nextReel.timestamp),
+        },
+        update: { excluded: false },
+      });
+
       await prisma.automation.update({
         where: { id: automation.id },
         data: {
-          postId: nextReel.id,
-          postUrl: nextReel.permalink ?? null,
+          postId: automation.postId ?? nextReel.id,
+          postUrl: automation.postUrl ?? nextReel.permalink ?? null,
           pendingNextReel: false,
         },
       });
