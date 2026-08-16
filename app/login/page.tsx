@@ -1,5 +1,6 @@
 import { signIn } from "@/lib/auth";
 import { getCampaignTemplate } from "@/lib/templates/campaign-templates";
+import { PasskeySignInButton } from "@/components/passkey-signin-button";
 
 export const metadata = {
   title: "Login - OpenReply",
@@ -66,7 +67,8 @@ export default async function LoginPage({
               </p>
             </div>
           ) : (
-            <form action={sendMagicLink} className="space-y-5">
+            <>
+              <form action={sendMagicLink} className="space-y-5">
               <div className="space-y-2">
                 <label
                   htmlFor="email"
@@ -91,7 +93,12 @@ export default async function LoginPage({
               >
                 Email me a magic link
               </button>
-            </form>
+              </form>
+
+              <div className="mt-5">
+                <PasskeySignInButton callbackUrl={callbackUrl} />
+              </div>
+            </>
           )}
         </div>
       </div>

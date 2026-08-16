@@ -19,6 +19,8 @@
     "@auth/prisma-adapter": "^2.11.2",
     "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "^7.9.1",
+    "@simplewebauthn/browser": "^9.0.1",
+    "@simplewebauthn/server": "^9.0.3",
     "@vercel/analytics": "^2.0.1",
     "bullmq": "^5.76.4",
     "ioredis": "^5.10.1",

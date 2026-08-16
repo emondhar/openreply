@@ -50,6 +50,23 @@ export function getMetaGraphApiVersion(): string {
   return process.env.META_GRAPH_API_VERSION ?? "v25.0";
 }
 
+// Optional sign-in allowlist. Magic links otherwise let anyone who can receive
+// email create an account, which is fine for a shared instance but wrong for a
+// single-operator one. Comma-separated, case- and whitespace-insensitive.
+// Unset means no restriction, so existing self-hosts are unaffected.
+export function isEmailAllowedToSignIn(email?: string | null): boolean {
+  const allowlist = (process.env.AUTH_ALLOWED_EMAILS ?? "")
+    .split(",")
+    .map((entry) => entry.trim().toLowerCase())
+    .filter(Boolean);
+
+  if (allowlist.length === 0) return true;
+
+  const normalized = email?.trim().toLowerCase();
+  if (!normalized) return false;
+  return allowlist.includes(normalized);
+}
+
 export const serverEnvSchema = z.object({
   NEXTAUTH_URL: z.string().url(),
   NEXTAUTH_SECRET: z.string().min(16),

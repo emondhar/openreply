@@ -20,6 +20,7 @@ model User {
 
   accounts          Account[]
   sessions          Session[]
+  authenticators    Authenticator[]
   ownedWorkspaces   Workspace[]       @relation("WorkspaceOwner")
   workspaceMembers  WorkspaceMember[]
   sentInvitations   WorkspaceInvitation[] @relation("WorkspaceInvitationsSent")
@@ -62,6 +63,30 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+// Passkeys (WebAuthn). Field names are fixed by the Auth.js adapter contract —
+// @auth/prisma-adapter looks up `authenticator` by `credentialID` and updates
+// `counter` by name, so these cannot be renamed.
+model Authenticator {
+  credentialID         String  @unique
+  userId               String
+  providerAccountId    String
+  credentialPublicKey  String
+  counter              Int
+  credentialDeviceType String
+  credentialBackedUp   Boolean
+  transports           String?
+
+  // Not part of the adapter contract. The adapter strips undefined values
+  // before create, so an optional label and a defaulted timestamp are safe to
+  // add, and they let the settings page show which device a passkey belongs to.
+  name      String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, credentialID])
 }
 
 model Workspace {

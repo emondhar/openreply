@@ -1,8 +1,10 @@
 import NextAuth, { type NextAuthConfig } from "next-auth";
 import Resend from "next-auth/providers/resend";
+import Passkey from "next-auth/providers/passkey";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/db/client";
 import { ensureWorkspaceForUser, getPrimaryWorkspace } from "@/lib/workspace";
+import { isEmailAllowedToSignIn } from "@/lib/env";
 
 type AdapterPrismaClient = Parameters<typeof PrismaAdapter>[0];
 
@@ -13,8 +15,19 @@ export const authConfig = {
       apiKey: process.env.RESEND_API_KEY ?? "missing-resend-api-key",
       from: process.env.EMAIL_FROM ?? "OpenReply <login@example.com>",
     }),
+    // Kept alongside Resend deliberately: a passkey can be lost with the device
+    // that holds it, and on an instance locked to one address via
+    // AUTH_ALLOWED_EMAILS the magic link is the only way back in.
+    Passkey,
   ],
+  // Auth.js WebAuthn support is still experimental and must be opted into.
+  experimental: { enableWebAuthn: true },
   callbacks: {
+    // Runs before the magic link is sent, so a blocked address never receives
+    // one and never reaches the adapter to have a User row created.
+    async signIn({ user }) {
+      return isEmailAllowedToSignIn(user.email);
+    },
     async session({ session, user }) {
       if (session.user) {
         session.user.id = user.id;
