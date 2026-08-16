@@ -3,8 +3,8 @@ import { getCampaignTemplate } from "@/lib/templates/campaign-templates";
 import { PasskeySignInButton } from "@/components/passkey-signin-button";
 
 export const metadata = {
-  title: "Login - OpenReply",
-  description: "Sign in to manage Instagram comment-to-DM campaigns.",
+  title: "Sign in",
+  description: "Private instance. Nothing to see here.",
 };
 
 export default async function LoginPage({
@@ -35,18 +35,18 @@ export default async function LoginPage({
   return (
     <div className="min-h-screen flex items-center justify-center px-6">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-semibold text-foreground">
-            OpenReply
+        <div className="mb-8 text-center">
+          <h1 className="b-display text-2xl">
+            ManyChat by <span className="b-script">E</span>mon
           </h1>
-          <p className="text-muted text-sm leading-relaxed mt-2">
+          <p className="mt-2 text-sm leading-relaxed text-muted">
             {selectedTemplate
               ? `Sign in to use the ${selectedTemplate.title} template.`
-              : "Sign in by email, then connect your Instagram professional account."}
+              : "If you don\u2019t already have a login, you\u2019re in the wrong place."}
           </p>
         </div>
 
-        <div className="panel rounded p-8 shadow-black/40">
+        <div className="panel rounded-2xl p-8">
           {selectedTemplate && !checkEmail && (
             <div className="mb-5 border border-accent/20 bg-accent/10 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-accent">
@@ -83,13 +83,13 @@ export default async function LoginPage({
                   required
                   autoComplete="email"
                   placeholder="you@company.com"
-                  className="w-full px-4 py-3 rounded bg-surface border border-border text-sm text-foreground placeholder:text-zinc-500 focus:border-accent/40 focus:outline-none transition-colors"
+                  className="w-full px-4 py-3 rounded-xl bg-background border border-border text-sm text-foreground placeholder:text-muted focus:border-accent/40 focus:outline-none transition-colors"
                 />
               </div>
 
               <button
                 type="submit"
-                className="w-full inline-flex items-center justify-center gap-2 rounded bg-accent px-6 py-3.5 text-sm font-semibold text-white shadow-indigo-500/25 transition-all hover:shadow-indigo-500/30"
+                className="b-pill b-pill--filled w-full"
               >
                 Email me a magic link
               </button>

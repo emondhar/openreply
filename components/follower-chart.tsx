@@ -29,11 +29,14 @@ export interface FollowerChartPoint {
   delta: number | null;
 }
 
-// Colors read against the light chart surface (#ffffff): the accent line clears
-// 3:1 contrast and grid/axis text match the muted/border tokens. See globals.css.
-const SERIES_COLOR = "#f97316";
-const GRID_COLOR = "#e4e4e7";
-const AXIS_TEXT = "#71717a";
+// Recharts takes SVG colour props, not classes, so these cannot come through
+// Tailwind — they are the literal token values from globals.css. Read against
+// the cream chart surface: the darkened green clears 6.1:1, and grid/axis match
+// --hairline and --muted exactly, so the chart sits in the same world as the
+// panel around it rather than importing a second palette.
+const SERIES_COLOR = "#00660a";
+const GRID_COLOR = "#d8ceb6";
+const AXIS_TEXT = "#63564e";
 
 function formatCompact(n: number): string {
   if (Math.abs(n) >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -142,7 +145,7 @@ export default function FollowerChart({
         <div className="mt-4 max-h-72 overflow-y-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-zinc-500">
+              <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted">
                 <th className="py-2 pr-4 font-medium">Date</th>
                 <th className="py-2 px-3 font-medium text-right">Followers</th>
                 <th className="py-2 pl-3 font-medium text-right">Change</th>

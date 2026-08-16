@@ -1,22 +1,165 @@
 @import "tailwindcss";
 
-/* ManyChat Alternative — Design System
-   Plain and functional. No gradients, glass, glow, or animation. */
+/* ManyChat by Emon — design system
+   ================================
+   Ported from emondhar.com so this reads as the same hand rather than as a
+   separate product wearing the same name. The source palette, the spacing
+   scale, the type roles and the material rules are all his; what is left out
+   is the brand site's 150px display type, which belongs to a page you read
+   once and not to a tool you operate every day.
+
+   Structure: runtime custom properties on :root carry the palette, and the
+   @theme block below maps Tailwind's colour names onto them with `inline`, so
+   `bg-surface` compiles to `background-color: var(--surface)` rather than to a
+   baked hex. That is what lets a `.night` scope re-point four variables and
+   invert an entire subtree without a single dark: variant. */
+
+:root {
+  /* ------------------------------------------------------------ the seven
+     Emon's own grade, lifted off his video work. Source colours: never used
+     directly by a component, only referenced by the role tokens below, so the
+     app cannot drift off his palette by accident. */
+  --lime: #afe046;
+  --green: #00830d;
+  --brown: #3f312d;
+  --cream: #f5ecd0;
+  --yellow: #feff4e;
+  --cyan: #00fef4;
+  --pink: #fe9ddb;
+
+  /* ------------------------------------------------------------ daylight
+     The ground steps warm rather than grey — cream carrying 4% / 9% / 16% of
+     the brown — the way Apple steps #fff to #f5f5f7 instead of to a neutral. */
+  --bg: var(--cream);
+  --surface: #eee5c9;
+  --surface-2: #e5dbc1;
+  --surface-hover: #e5dbc1;
+  --hairline: #d8ceb6;
+  --hairline-strong: #c6b99c;
+  --fg: var(--brown);
+
+  /* --muted-2 is tuned against the *raised* ground, not the page, because that
+     is where it is hardest: the same token labels a panel on --bg and on
+     --surface, and a value tuned to the page alone falls under AA the moment
+     it sits on a panel. */
+  --muted: #63564e;
+  --muted-2: #6b5e54;
+
+  /* The green measures 4.18:1 on cream — just under AA for body text — so
+     --accent-strong is the darkened step (6.1:1) used wherever it carries real
+     text or sits under a cream label. */
+  --accent: var(--green);
+  --accent-strong: #00660a;
+
+  /* Status. Kept off the seven on purpose: a signal colour has to mean one
+     thing, and lime already means "this section is Builds". Warm-shifted so
+     they belong to this ground rather than arriving from Tailwind. */
+  --success: #00660a;
+  --warning: #8a5a00;
+  --error: #a3231b;
+
+  /* ------------------------------------------------------------ night
+     Two depths of the brown, both by darkening it rather than reaching for a
+     neutral black. */
+  --night: #191412;
+  --night-2: #2c2220;
+  --night-line: #493a34;
+
+  /* ------------------------------------------------------------ spacing
+     4/8-based. Components pick from these rather than inventing a value, so
+     the app keeps one rhythm instead of twenty near-miss gaps. */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+  --s-7: 48px;
+  --s-8: 64px;
+  --s-9: 96px;
+
+  /* Horizontal frame on Apple's model: the gutter is a proportion of the
+     viewport that keeps growing until the content column hits its ceiling,
+     rather than a clamp that tops out and lets the margins do the growing. */
+  --gutter: clamp(20px, 6.25vw, 100px);
+  --content-max: 1260px;
+  --measure: 58ch;
+
+  /* Stepped, not fluid — the rhythm is identical for everyone on a given class
+     of screen instead of being a different page at every viewport width. */
+  --section-y: 160px;
+  --header-y: 80px;
+  --block-y: 40px;
+  --nav-h: 64px;
+}
+
+/* Apple's two breaks, and the only two this file uses. */
+@media (max-width: 1068px) {
+  :root {
+    --section-y: 128px;
+    --header-y: 64px;
+    --block-y: 32px;
+  }
+}
+
+@media (max-width: 734px) {
+  :root {
+    --section-y: 96px;
+    --header-y: 48px;
+    --block-y: 24px;
+  }
+}
+
+/* A subtree that re-points the four ground tokens. Every component below works
+   in either world without knowing which one it is in — no dark: variants, no
+   duplicated rules. */
+.night {
+  --bg: var(--night);
+  --surface: var(--night-2);
+  --surface-2: #382c29;
+  --surface-hover: #382c29;
+  --hairline: var(--night-line);
+  --hairline-strong: #5c4a42;
+  --fg: var(--cream);
+  --muted: #b9a99d;
+  --muted-2: #cbbdb1;
+  /* The one rule, inverted: the neons are text at night and fills in daylight.
+     On this ground lime runs 8.9:1, so here the accent can finally be ink. */
+  --accent: var(--lime);
+  --accent-strong: var(--lime);
+  --success: var(--lime);
+  --warning: var(--yellow);
+  --error: #ff9d93;
+
+  background: var(--bg);
+  color: var(--fg);
+}
 
 @theme inline {
-  --color-background: #ffffff;
-  --color-foreground: #18181b;
-  --color-surface: #f7f7f8;
-  --color-surface-hover: #efeff1;
-  --color-border: #e4e4e7;
-  --color-border-hover: #d4d4d8;
-  --color-muted: #71717a;
-  --color-accent: #f97316;
-  --color-accent-hover: #ea580c;
-  --color-success: #16a34a;
-  --color-error: #dc2626;
-  --color-warning: #d97706;
-  --font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* Mapped to var(), not to hex, so `.night` can re-point them at runtime. */
+  --color-background: var(--bg);
+  --color-foreground: var(--fg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-hover: var(--surface-hover);
+  --color-border: var(--hairline);
+  --color-border-hover: var(--hairline-strong);
+  --color-muted: var(--muted);
+  --color-muted-2: var(--muted-2);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-hover: var(--accent-strong);
+  --color-success: var(--success);
+  --color-error: var(--error);
+  --color-warning: var(--warning);
+  --color-cream: var(--cream);
+  --color-brown: var(--brown);
+  --color-lime: var(--lime);
+  --color-night: var(--night);
+
+  --font-sans: var(--font-body), system-ui, sans-serif;
+  --font-display: var(--font-display), system-ui, sans-serif;
+  --font-serif: var(--font-serif), Georgia, serif;
   --font-mono: ui-monospace, monospace;
 }
 
@@ -25,14 +168,74 @@ html {
 }
 
 body {
-  background: var(--color-background);
-  color: var(--color-foreground);
-  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--fg);
+  /* Apple's marketing body, exactly: 17px on 1.4706. rem, not px, so it still
+     follows the reader's own browser font-size setting. The tracking is the one
+     departure — Apple's -0.022em is drawn for SF Pro Text; Inter is already
+     narrower per character and closes up at that value. */
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-size: 1.0625rem;
+  line-height: 1.4706;
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Tracking is size-specific, never one value for everything: letters read too
-   far apart as type grows. Headings tighten; body copy stays at zero. Element
-   selectors, so any Tailwind tracking-* utility on the element still wins. */
+/* Lime under brown (8.0:1), not cream under green (4.2:1) — the one moment the
+   visitor makes a colour happen themselves is worth spending a neon on. */
+::selection {
+  background: var(--lime);
+  color: var(--brown);
+}
+
+/* Apple's viewport-content, expressed through padding rather than a percentage
+   width. Same result — content is 87.5% of the viewport until it hits the
+   ceiling, then it stops and the margins take the rest — but keeping the gutter
+   as real padding is what lets a child cancel it with a negative inline margin
+   and go full bleed. The max-width carries the gutters too, because box-sizing
+   is border-box: the box is content + padding. */
+.b-container {
+  max-width: calc(var(--content-max) + var(--gutter) * 2);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+/* ---------------------------------------------------------------- type
+   Display headlines are uppercased by CSS and tightened; body copy stays at
+   zero. Tracking is size-specific — a single value is wrong somewhere. */
+
+.b-display {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: -0.025em;
+  line-height: 1.04;
+  text-wrap: balance;
+}
+
+/* Only the 700 italic is loaded (see layout.tsx), so this is 700 too — asking
+   for 400 here would synthesise a lighter face rather than load one. */
+.b-serif {
+  font-family: var(--font-serif), Georgia, serif;
+  font-style: italic;
+  font-weight: 700;
+}
+
+/* The accent letter: serif italic, natural case, inside uppercase display
+   caps — one letter per headline shifts face, style and case at once while
+   staying on the same baseline. 700 because Playfair's italic capitals are
+   high-contrast, and at 400 inside 800 display caps they read as amputated
+   rather than thin. */
+.b-script {
+  font-family: var(--font-serif), Georgia, serif;
+  font-style: italic;
+  font-weight: 700;
+  text-transform: none;
+  color: inherit;
+  font-size: 1.06em;
+  margin-inline: 0 0.04em;
+}
+
 h1,
 h2,
 h3 {
@@ -44,57 +247,110 @@ h1 {
   line-height: 1.1;
 }
 
-/* Feedback lands on press, not on release — the gap between a click and the
-   next route rendering was otherwise completely silent. Buttons only: a
-   blanket rule on anchors would scale full-width nav rows and card links,
-   which reads as the layout wobbling rather than a control responding. */
-button:not(:disabled):active {
-  transform: scale(0.985);
+/* The eyebrow carries its section's signature colour as a mark rather than as
+   ink. Setting a 12px label in lime or cyan on this ground lands at 1.3:1 —
+   unreadable, and it spends the colour on the element least able to hold it. A
+   filled chip beside muted text shows the same colour at full saturation and
+   keeps the word legible. */
+.b-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7em;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--muted-2);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  button:not(:disabled):active {
-    transform: none;
+.b-eyebrow::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 0.75em;
+  height: 0.75em;
+  border-radius: 2px;
+  background: var(--sig, var(--accent));
+}
+
+/* ---------------------------------------------------------------- pills */
+
+.b-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em;
+  padding: var(--s-3) var(--s-5);
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--fg);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.12s ease;
+}
+
+.b-pill:hover {
+  background: var(--fg);
+  border-color: var(--fg);
+  color: var(--bg);
+}
+
+/* The press, and it is the only feedback a phone ever gets: hover does not
+   exist there, so without this every control acknowledges a tap with nothing
+   at all until the next screen renders. */
+.b-pill:active {
+  transform: scale(0.97);
+}
+
+.b-pill--filled {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+  color: var(--cream);
+  font-weight: 600;
+}
+
+.b-pill--filled:hover {
+  background: var(--fg);
+  border-color: var(--fg);
+  color: var(--bg);
+}
+
+/* ---------------------------------------------------------------- chrome
+   Nav and toolbars are translucent layers with content scrolling underneath,
+   not opaque bars that consume a fixed strip. Saturate as well as blur: blur
+   alone drains the colour out of what passes behind and the sheet reads grey
+   rather than frosted. */
+
+.b-glass {
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: blur(12px) saturate(180%);
+  color: var(--fg);
+}
+
+@supports not (backdrop-filter: blur(12px)) {
+  .b-glass {
+    background: var(--bg);
   }
 }
 
-/* Focus ring — visible, for keyboard users. */
-:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-}
-
-/* Form fields already have a border, so keep the focus ring hugging the
-   field instead of bleeding up toward the label above it. */
-input:focus-visible,
-textarea:focus-visible,
-select:focus-visible {
-  outline-offset: 1px;
-}
-
-/* iOS Safari zooms the whole page in when a focused field's text is under 16px,
-   and never zooms back out. Fields are text-sm (14px) throughout, so raise them
-   to 16px on phones and leave the desktop sizing alone. */
-@media (max-width: 640px) {
-  input,
-  textarea,
-  select {
-    font-size: 16px;
-  }
-}
-
-/* Panel — flat container. Replaces .glass / .glass-strong. */
+/* Panel — the flat container the dashboard is built from. */
 .panel {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  background: var(--surface);
+  border: 1px solid var(--hairline);
 }
 
 /* Kept as no-op aliases so existing markup degrades to plain surfaces
    instead of breaking. Prefer .panel in new code. */
 .glass,
 .glass-strong {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  background: var(--surface);
+  border: 1px solid var(--hairline);
 }
 
 .gradient-mesh {
@@ -108,11 +364,57 @@ select:focus-visible {
   animation: none;
 }
 
+/* Focus ring — visible, for keyboard users. */
+:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
+}
+
+/* Form fields already have a border, so keep the focus ring hugging the
+   field instead of bleeding up toward the label above it. */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline-offset: 1px;
+}
+
+/* Feedback lands on press, not on release. Buttons only: a blanket rule on
+   anchors would scale full-width nav rows and card links, which reads as the
+   layout wobbling rather than a control responding. */
+button:not(:disabled):active {
+  transform: scale(0.985);
+}
+
+/* iOS Safari zooms the whole page in when a focused field's text is under 16px,
+   and never zooms back out. Fields are text-sm (14px) throughout, so raise them
+   to 16px on phones and leave the desktop sizing alone. */
+@media (max-width: 640px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+
+/* Reduced motion keeps the colour and opacity changes that aid comprehension
+   and drops the movement. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
+  }
+
+  button:not(:disabled):active,
+  .b-pill:active {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .b-glass {
+    background: var(--bg);
+    backdrop-filter: none;
   }
 }

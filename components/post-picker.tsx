@@ -195,7 +195,7 @@ export default function PostPicker({
     return (
       <div className="text-center py-8">
         <p className="text-sm text-muted">{error}</p>
-        <p className="text-xs text-zinc-500 mt-1">Connect your Instagram account first</p>
+        <p className="text-xs text-muted mt-1">Connect your Instagram account first</p>
       </div>
     );
   }
@@ -217,7 +217,7 @@ export default function PostPicker({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search your posts by caption…"
-          className="min-w-45 flex-1 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-zinc-500 focus:border-accent/40 focus:outline-none"
+          className="min-w-45 flex-1 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted focus:border-accent/40 focus:outline-none"
         />
         <div className="flex items-center gap-1 rounded-lg border border-border bg-surface p-0.5">
           {TYPE_FILTERS.map((filter) => (
@@ -228,7 +228,7 @@ export default function PostPicker({
               aria-pressed={typeFilter === filter.value}
               className={`rounded px-2.5 py-1 text-xs transition-colors ${
                 typeFilter === filter.value
-                  ? "bg-accent text-white"
+                  ? "bg-accent text-foreground"
                   : "text-muted hover:text-foreground"
               }`}
             >
@@ -388,7 +388,7 @@ export default function PostPicker({
                 <button
                   type="button"
                   onClick={() => onRuleChange(draft)}
-                  className="rounded bg-accent px-2.5 py-1 text-xs text-white hover:opacity-90"
+                  className="rounded bg-accent px-2.5 py-1 text-xs text-foreground hover:opacity-90"
                 >
                   Keep rule active
                 </button>
@@ -501,14 +501,14 @@ export default function PostPicker({
                     aria-hidden
                     className={`absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full border text-[11px] leading-none ${
                       isSelected
-                        ? "border-accent bg-accent text-white"
-                        : "border-white/60 bg-black/30 text-transparent"
+                        ? "border-accent bg-accent text-foreground"
+                        : "border-border bg-night/60 text-transparent"
                     }`}
                   >
                     ✓
                   </span>
                   {byRule && (
-                    <span className="absolute inset-x-0 bottom-0 bg-accent/70 py-0.5 text-[10px] text-white">
+                    <span className="absolute inset-x-0 bottom-0 bg-accent/70 py-0.5 text-[10px] text-foreground">
                       Rule
                     </span>
                   )}
@@ -554,7 +554,7 @@ export default function PostPicker({
                       ?
                     </span>
                   )}
-                  <span className="absolute inset-0 hidden items-center justify-center bg-black/60 text-xs text-white group-hover:flex">
+                  <span className="absolute inset-0 hidden items-center justify-center bg-night/60 text-xs text-foreground group-hover:flex">
                     ×
                   </span>
                 </button>

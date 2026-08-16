@@ -37,7 +37,7 @@ export default function Sidebar({
       {/* Mobile overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/60 lg:hidden"
+          className="fixed inset-0 z-40 bg-night/60 lg:hidden"
           onClick={onClose}
         />
       )}
@@ -51,8 +51,8 @@ export default function Sidebar({
         `}
       >
         <div className="px-6 py-5 border-b border-border">
-          <Link href="/dashboard" className="text-base font-semibold">
-            OpenReply
+          <Link href="/dashboard" className="b-display text-base">
+            ManyChat by <span className="b-script">E</span>mon
           </Link>
         </div>
 
@@ -67,14 +67,23 @@ export default function Sidebar({
                 onClick={onClose}
                 aria-current={isActive ? "page" : undefined}
                 className={`
-                  block px-3 py-2.5 rounded text-sm
+                  relative block rounded-full px-3 py-2.5 text-sm transition-colors
                   ${
                     isActive
-                      ? "bg-surface-hover text-foreground font-medium"
-                      : "text-muted hover:text-foreground hover:bg-surface-hover"
+                      ? "bg-surface-hover font-medium text-foreground"
+                      : "text-muted hover:bg-surface-hover hover:text-foreground"
                   }
                 `}
               >
+                {/* The signature mark, borrowed from the brand eyebrow: the
+                    accent identifies where you are without tinting the label,
+                    which at this size would cost legibility for no gain. */}
+                {isActive && (
+                  <span
+                    aria-hidden
+                    className="absolute left-0 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-full bg-accent"
+                  />
+                )}
                 {item.label}
               </Link>
             );
@@ -82,8 +91,8 @@ export default function Sidebar({
         </nav>
 
         <div className="px-5 py-4 border-t border-border">
-          <p className="text-sm text-foreground truncate">{workspaceName}</p>
-          <p className="text-xs text-muted">Self-hosted</p>
+          <p className="truncate text-sm text-foreground">{workspaceName}</p>
+          <p className="text-xs text-muted">Private instance · Montreal</p>
         </div>
       </aside>
     </>

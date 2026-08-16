@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import Link from "next/link";
 
 export const metadata: Metadata = {
@@ -51,7 +51,7 @@ const flowSteps = [
 
 function AppWindow({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-background shadow-2xl shadow-black/50">
+    <div className="overflow-hidden rounded-lg border border-border bg-background shadow-xl shadow-brown/10">
       <div className="flex items-center gap-2 border-b border-border bg-surface px-4 py-3">
         <span className="h-2.5 w-2.5 rounded-full bg-border" />
         <span className="h-2.5 w-2.5 rounded-full bg-border" />
@@ -142,7 +142,7 @@ function OverviewPreview() {
         <p className="text-sm font-semibold text-foreground">Posts</p>
         <table className="mt-3 w-full text-sm">
           <thead>
-            <tr className="border-b border-border text-left text-[11px] uppercase tracking-wide text-zinc-500">
+            <tr className="border-b border-border text-left text-[11px] uppercase tracking-wide text-muted">
               <th className="pb-2 pr-3 font-medium">Post</th>
               <th className="pb-2 px-3 text-right font-medium">Views</th>
               <th className="pb-2 px-3 text-right font-medium">Likes</th>
@@ -159,7 +159,7 @@ function OverviewPreview() {
                 <td className="py-2 px-3 text-right tabular-nums text-muted">
                   {likes}
                 </td>
-                <td className="py-2 pl-3 text-right text-zinc-500">{date}</td>
+                <td className="py-2 pl-3 text-right text-muted">{date}</td>
               </tr>
             ))}
           </tbody>
@@ -171,7 +171,7 @@ function OverviewPreview() {
 
 function MatchedCommentCard() {
   return (
-    <div className="w-64 rounded-lg border border-border bg-surface p-4 shadow-2xl shadow-black/50">
+    <div className="w-64 rounded-lg border border-border bg-surface p-4 shadow-xl shadow-brown/10">
       <p className="text-xs text-muted">New comment</p>
       <p className="mt-1 text-sm font-semibold text-foreground">@maya.co</p>
       <p className="mt-1 text-sm text-muted">LINK please</p>
@@ -235,7 +235,7 @@ function DashboardPreview() {
                 className="w-full rounded-sm bg-accent"
                 style={{ height: `${Math.max((n / maxDM) * 100, 4)}%` }}
               />
-              <span className="text-[10px] text-zinc-500">{day}</span>
+              <span className="text-[10px] text-muted">{day}</span>
             </div>
           ))}
         </div>
@@ -262,72 +262,65 @@ function DashboardPreview() {
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-white text-zinc-900">
-      <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white">
-        <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-5 sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-background text-foreground">
+      <header className="b-glass sticky top-0 z-40 border-b border-border">
+        <div className="b-container flex h-16 w-full items-center justify-between">
           <Link
             href="/"
             className="flex items-center gap-3"
             aria-label="ManyChat by Emon home"
           >
-            <span className="text-lg font-bold text-zinc-900">
-              ManyChat by Emon
+            <span className="b-display text-lg">
+              ManyChat by <span className="b-script">E</span>mon
             </span>
           </Link>
 
-          <Link
-            href="/login"
-            className="inline-flex items-center justify-center gap-2 bg-orange-500 px-4 py-2 text-sm font-bold text-white transition hover:bg-orange-600"
-          >
+          <Link href="/login" className="b-pill b-pill--filled">
             Sign in
           </Link>
         </div>
       </header>
 
-      <section className="mx-auto grid w-full max-w-6xl items-center gap-10 px-5 pb-16 pt-12 sm:px-6 sm:pt-18 lg:grid-cols-[0.95fr_1.05fr] lg:px-8 lg:pb-24">
+      <section className="b-container grid w-full items-center gap-10 pb-16 pt-12 sm:pt-18 lg:grid-cols-[0.95fr_1.05fr] lg:pb-24">
         <div className="max-w-3xl">
-          <div className="inline-flex items-center gap-2 border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-600">
+          {/* Lime is the signature for this page, the way each section of
+              emondhar.com carries one. */}
+          <p className="b-eyebrow" style={{ "--sig": "var(--lime)" } as CSSProperties}>
             Private instance · Not for sale
-          </div>
+          </p>
 
-          <h1 className="mt-7 text-balance text-5xl font-black leading-[1.02] text-zinc-900 sm:text-6xl lg:text-7xl">
-            Hey. You found my special ManyChat.
+          <h1 className="b-display mt-6 text-5xl sm:text-6xl lg:text-7xl">
+            Hey. You found my special Many<span className="b-script">C</span>hat.
           </h1>
 
-          <p className="mt-6 max-w-2xl text-lg leading-8 text-zinc-600">
+          <p className="mt-6 max-w-2xl text-lg leading-8 text-muted">
             This is the thing that DMs you the link when you comment a keyword
             on my reel. It runs on my own server, on the official Meta API, and
             it costs me roughly nothing — which was the entire point.
           </p>
 
-          <p className="mt-4 max-w-2xl text-lg leading-8 text-zinc-600">
+          <p className="mt-4 max-w-2xl text-lg leading-8 text-muted">
             There&rsquo;s no signup. If you don&rsquo;t already have a login,
             you&rsquo;re in the wrong place, and honestly, good for you for
             poking around.
           </p>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Link
-              href="/login"
-              className="inline-flex items-center justify-center gap-2 bg-orange-500 px-6 py-3 text-sm font-bold text-white transition hover:bg-orange-600"
-            >
+            <Link href="/login" className="b-pill b-pill--filled">
               Sign in
             </Link>
-            <a
-              href="#why"
-              className="inline-flex items-center justify-center border border-zinc-200 bg-white px-6 py-3 text-sm font-bold text-zinc-900 transition hover:border-zinc-300 hover:bg-zinc-100"
-            >
+            <a href="#why" className="b-pill">
               Why this exists
             </a>
           </div>
 
           <dl className="mt-10 grid max-w-xl grid-cols-3 gap-3">
             {heroStats.map((stat) => (
-              <div key={stat.label} className="border border-zinc-200 bg-zinc-50 p-4">
-                <dt className="text-2xl font-black tabular-nums text-zinc-900">
+              <div key={stat.label} className="border border-border bg-surface p-4">
+                <dt className="b-display text-2xl tabular-nums text-foreground">
                   {stat.value}
                 </dt>
-                <dd className="mt-1 text-xs leading-5 text-zinc-500">
+                <dd className="mt-1 text-xs leading-5 text-muted">
                   {stat.label}
                 </dd>
               </div>
@@ -345,22 +338,22 @@ export default function Home() {
 
       <section
         id="why"
-        className="border-y border-zinc-200 bg-zinc-50 py-20 scroll-mt-16"
+        className="border-y border-border bg-surface py-20 scroll-mt-16"
       >
-        <div className="mx-auto w-full max-w-6xl px-5 sm:px-6 lg:px-8">
+        <div className="b-container w-full">
           <div className="max-w-2xl">
-            <p className="text-sm font-bold uppercase text-orange-600">
+            <p className="b-eyebrow" style={{ "--sig": "var(--pink)" } as CSSProperties}>
               Why this exists
             </p>
-            <h2 className="mt-3 text-4xl font-black leading-tight text-zinc-900 sm:text-5xl">
-              The short version
+            <h2 className="b-display mt-4 text-4xl sm:text-5xl">
+              The short <span className="b-script">v</span>ersion
             </h2>
-            <p className="mt-5 text-base leading-8 text-zinc-600">
+            <p className="mt-5 text-base leading-8 text-muted">
               ManyChat wanted a subscription to send one link when someone
               comments one word. I looked at the pricing page, closed the tab,
               and forked OpenReply instead.
             </p>
-            <p className="mt-4 text-base leading-8 text-zinc-600">
+            <p className="mt-4 text-base leading-8 text-muted">
               Now it sits on my own domain, sends my own DMs, and charges me
               nothing when a reel actually works. That&rsquo;s the whole story.
               There&rsquo;s no startup here.
@@ -371,15 +364,15 @@ export default function Home() {
 
       <section
         id="how"
-        className="mx-auto w-full max-w-6xl px-5 py-20 sm:px-6 lg:px-8 scroll-mt-16"
+        className="b-container w-full py-20 scroll-mt-16"
       >
         <div className="grid gap-10 lg:grid-cols-[0.82fr_1.18fr] lg:items-center">
           <div>
-            <p className="text-sm font-bold uppercase text-orange-600">
+            <p className="b-eyebrow" style={{ "--sig": "var(--cyan)" } as CSSProperties}>
               How it works
             </p>
-            <h2 className="mt-3 text-4xl font-black leading-tight text-zinc-900 sm:text-5xl">
-              What it actually does
+            <h2 className="b-display mt-4 text-4xl sm:text-5xl">
+              What it <span className="b-script">a</span>ctually does
             </h2>
           </div>
 
@@ -387,12 +380,12 @@ export default function Home() {
             {flowSteps.map((step) => (
               <article
                 key={step.eyebrow}
-                className="grid gap-4 border border-zinc-200 bg-zinc-50 p-5 sm:grid-cols-[120px_1fr]"
+                className="grid gap-4 border border-border bg-surface p-5 sm:grid-cols-[120px_1fr]"
               >
-                <p className="text-sm font-bold text-orange-600">
+                <p className="b-display text-sm text-accent-strong">
                   {step.eyebrow}
                 </p>
-                <p className="text-sm leading-6 text-zinc-600">
+                <p className="text-sm leading-6 text-muted">
                   {step.description}
                 </p>
               </article>
@@ -401,18 +394,21 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="border-y border-zinc-200 bg-zinc-50 py-20">
-        <div className="mx-auto grid w-full max-w-6xl gap-10 px-5 sm:px-6 lg:grid-cols-[1.08fr_0.92fr] lg:px-8 lg:items-center">
+      {/* The one dark act on the page, the way emondhar.com turns the story
+          section to night. Every token below re-points itself — the preview
+          window inside needs no dark variant of its own. */}
+      <section className="night border-y border-border py-20">
+        <div className="b-container grid w-full gap-10 lg:grid-cols-[1.08fr_0.92fr] lg:items-center">
           <DashboardPreview />
 
           <div>
-            <p className="text-sm font-bold uppercase text-orange-600">
+            <p className="b-eyebrow" style={{ "--sig": "var(--yellow)" } as CSSProperties}>
               The dashboard
             </p>
-            <h2 className="mt-3 text-4xl font-black leading-tight text-zinc-900 sm:text-5xl">
-              Everything is traceable
+            <h2 className="b-display mt-4 text-4xl sm:text-5xl">
+              Everything is tra<span className="b-script">c</span>eable
             </h2>
-            <p className="mt-5 text-base leading-8 text-zinc-600">
+            <p className="mt-5 text-base leading-8 text-muted">
               Queued, matched, sent, skipped, failed, rate-limited. If a DM
               didn&rsquo;t land, I know exactly where it died. That&rsquo;s the
               part I actually wanted.
@@ -421,29 +417,26 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="mx-auto w-full max-w-6xl px-5 py-20 sm:px-6 lg:px-8">
-        <div className="grid gap-8 border border-orange-200 bg-orange-50 p-6 sm:p-10 lg:grid-cols-[1fr_auto] lg:items-center">
+      <section className="b-container w-full py-20">
+        <div className="grid gap-8 border border-border bg-surface-2 p-6 sm:p-10 lg:grid-cols-[1fr_auto] lg:items-center">
           <div>
-            <h2 className="max-w-3xl text-4xl font-black leading-tight text-zinc-900 sm:text-5xl">
-              That&rsquo;s it. That&rsquo;s the page.
+            <h2 className="b-display max-w-3xl text-4xl sm:text-5xl">
+              That&rsquo;s it. That&rsquo;s the <span className="b-script">p</span>age.
             </h2>
-            <p className="mt-4 text-base leading-7 text-zinc-600">
+            <p className="mt-4 text-base leading-7 text-muted">
               If you&rsquo;re logged in, the dashboard is behind the button. If
               you&rsquo;re not, go watch the reel that sent you here.
             </p>
           </div>
-          <Link
-            href="/login"
-            className="inline-flex items-center justify-center gap-2 bg-orange-500 px-6 py-3 text-sm font-bold text-white transition hover:bg-orange-600"
-          >
+          <Link href="/login" className="b-pill b-pill--filled">
             Sign in
           </Link>
         </div>
       </section>
 
-      <footer className="border-t border-zinc-200 py-8">
-        <div className="mx-auto w-full max-w-6xl space-y-2 px-5 text-sm leading-6 text-zinc-500 sm:px-6 lg:px-8">
-          <p className="font-semibold text-zinc-600">
+      <footer className="border-t border-border py-8">
+        <div className="b-container w-full space-y-2 text-sm leading-6 text-muted">
+          <p className="font-semibold text-foreground">
             ManyChat by Emon · Private instance, self-hosted in Montreal.
           </p>
           <p>
@@ -452,7 +445,7 @@ export default function Home() {
               href={GITHUB_URL}
               target="_blank"
               rel="noreferrer"
-              className="underline underline-offset-2 transition hover:text-zinc-900"
+              className="underline underline-offset-2 transition hover:text-accent-strong"
             >
               OpenReply
             </a>{" "}
@@ -461,7 +454,7 @@ export default function Home() {
               href={GITHUB_URL}
               target="_blank"
               rel="noreferrer"
-              className="underline underline-offset-2 transition hover:text-zinc-900"
+              className="underline underline-offset-2 transition hover:text-accent-strong"
             >
               go star it
             </a>

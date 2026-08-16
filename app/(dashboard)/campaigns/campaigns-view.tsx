@@ -374,7 +374,7 @@ export default function CampaignsView({
           </Link>
           <Link
             href="/campaigns/new"
-            className="flex-1 rounded bg-accent px-4 py-2 text-center text-sm font-medium text-white hover:bg-accent-hover sm:flex-none"
+            className="flex-1 rounded bg-accent px-4 py-2 text-center text-sm font-medium text-foreground hover:bg-accent-hover sm:flex-none"
           >
             New Campaign
           </Link>
@@ -388,7 +388,7 @@ export default function CampaignsView({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search campaigns by name, keyword, or message…"
-            className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-zinc-500 focus:border-accent/40 focus:outline-none"
+            className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted focus:border-accent/40 focus:outline-none"
           />
           <div className="inline-flex shrink-0 rounded-lg bg-surface p-1">
             {(["all", "active", "paused"] as const).map((s) => (
@@ -467,7 +467,7 @@ export default function CampaignsView({
           </p>
           <Link
             href="/campaigns/new"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded bg-accent text-sm font-semibold text-white hover:bg-accent-hover transition-colors"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded bg-accent text-sm font-semibold text-foreground hover:bg-accent-hover transition-colors"
           >
             Create Campaign
           </Link>
@@ -576,13 +576,13 @@ export default function CampaignsView({
                     className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                       auto.isActive
                         ? "bg-success/10 text-success"
-                        : "bg-zinc-500/10 text-muted"
+                        : "bg-surface-hover text-muted"
                     }`}
                   >
                     {auto.isActive ? "Active" : "Paused"}
                   </span>
                   {auto.pendingNextReel && (
-                    <span className="shrink-0 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-warning">
+                    <span className="shrink-0 rounded-full bg-warning/10 px-2 py-0.5 text-xs font-medium text-warning">
                       Waiting for next reel
                     </span>
                   )}
@@ -625,13 +625,13 @@ export default function CampaignsView({
 
                 {/* Tracked link sent */}
                 {auto.trackedLinks[0]?.trackedUrl && (
-                  <p className="mt-2 truncate font-mono text-xs text-zinc-500">
+                  <p className="mt-2 truncate font-mono text-xs text-muted">
                     {auto.trackedLinks[0].trackedUrl}
                   </p>
                 )}
 
                 {/* Stats */}
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3 text-xs text-zinc-500">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3 text-xs text-muted">
                   <span className="font-medium text-foreground">
                     {auto._count.dmLogs} runs
                   </span>
@@ -682,12 +682,12 @@ export default function CampaignsView({
                   onClick={() => toggleActive(auto.id, auto.isActive)}
                   className={`
                     relative w-11 h-6 rounded-full transition-colors
-                    ${auto.isActive ? "bg-accent" : "bg-zinc-300"}
+                    ${auto.isActive ? "bg-accent" : "bg-border"}
                   `}
                 >
                   <span
                     className={`
-                      absolute top-1 w-4 h-4 rounded-full bg-white transition-transform shadow-sm
+                      absolute top-1 w-4 h-4 rounded-full bg-background transition-transform shadow-sm
                       ${auto.isActive ? "left-6" : "left-1"}
                     `}
                   />
@@ -740,7 +740,7 @@ export default function CampaignsView({
       {/* Reel lightbox */}
       {playingVideo && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-night/60 p-4"
           onClick={() => setPlayingVideo(null)}
         >
           <div
@@ -753,7 +753,7 @@ export default function CampaignsView({
                   href={playingVideo.postUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-zinc-300 hover:text-white"
+                  className="text-muted hover:text-foreground"
                 >
                   Open on Instagram
                 </a>
@@ -761,7 +761,7 @@ export default function CampaignsView({
               <button
                 type="button"
                 onClick={() => setPlayingVideo(null)}
-                className="text-zinc-300 hover:text-white"
+                className="text-muted hover:text-foreground"
               >
                 Close
               </button>

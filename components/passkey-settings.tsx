@@ -126,7 +126,7 @@ export function PasskeySettings() {
         type="button"
         onClick={() => void addPasskey()}
         disabled={busy}
-        className="inline-flex items-center justify-center gap-2 rounded bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-all disabled:opacity-60"
+        className="inline-flex items-center justify-center gap-2 rounded bg-accent px-5 py-2.5 text-sm font-semibold text-foreground transition-all disabled:opacity-60"
       >
         {busy ? "Waiting…" : "Add a passkey"}
       </button>
