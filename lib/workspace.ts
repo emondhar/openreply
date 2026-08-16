@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { prisma } from "@/lib/db/client";
 import type { Workspace, WorkspaceRole } from "@/app/generated/prisma/client";
 
@@ -50,23 +51,24 @@ export async function acceptPendingInvitationsForUser(
   }
 }
 
-export async function getWorkspaceMembership(userId: string): Promise<{
-  workspace: Workspace;
-  role: WorkspaceRole;
-} | null> {
-  const membership = await prisma.workspaceMember.findFirst({
-    where: { userId },
-    include: { workspace: true },
-    orderBy: { createdAt: "asc" },
-  });
+export const getWorkspaceMembership = cache(
+  async (
+    userId: string
+  ): Promise<{ workspace: Workspace; role: WorkspaceRole } | null> => {
+    const membership = await prisma.workspaceMember.findFirst({
+      where: { userId },
+      include: { workspace: true },
+      orderBy: { createdAt: "asc" },
+    });
 
-  if (!membership) return null;
+    if (!membership) return null;
 
-  return {
-    workspace: membership.workspace,
-    role: membership.role,
-  };
-}
+    return {
+      workspace: membership.workspace,
+      role: membership.role,
+    };
+  }
+);
 
 export async function ensureWorkspaceForUser(
   userId: string,
@@ -95,7 +97,53 @@ export async function ensureWorkspaceForUser(
   });
 }
 
-export async function getPrimaryWorkspace(userId: string): Promise<Workspace | null> {
-  const membership = await getWorkspaceMembership(userId);
-  return membership?.workspace ?? null;
-}
+export const getPrimaryWorkspace = cache(
+  async (userId: string): Promise<Workspace | null> => {
+    const membership = await getWorkspaceMembership(userId);
+    return membership?.workspace ?? null;
+  }
+);
+
+export type WorkspaceAccount = {
+  id: string;
+  username: string;
+  instagramId: string;
+  name: string | null;
+};
+
+/**
+ * The workspace and its connected Instagram accounts in a single query.
+ *
+ * The dashboard layout needs both on every render. It used to take three
+ * sequential round trips to get them — session, membership, accounts — with
+ * an invitation-acceptance write path wedged in the middle. Cached per
+ * request, so a page under the layout that also needs the account list reuses
+ * this rather than issuing its own.
+ */
+export const getWorkspaceWithAccounts = cache(async (userId: string) => {
+  const membership = await prisma.workspaceMember.findFirst({
+    where: { userId },
+    orderBy: { createdAt: "asc" },
+    select: {
+      role: true,
+      workspace: {
+        select: {
+          id: true,
+          name: true,
+          dmsSentThisPeriod: true,
+          instagramAccounts: {
+            orderBy: { connectedAt: "desc" },
+            select: {
+              id: true,
+              username: true,
+              instagramId: true,
+              name: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  return membership;
+});

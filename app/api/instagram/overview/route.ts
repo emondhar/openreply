@@ -4,10 +4,10 @@ import { prisma } from "@/lib/db/client";
 import { getWorkspaceInstagramAccount } from "@/lib/instagram-accounts";
 import {
   getAllUserMedia,
-  getMediaInsights,
   PermissionError,
   type InstagramMedia,
 } from "@/lib/meta/client";
+import { getCachedMediaInsights } from "@/lib/meta/insights-cache";
 import { decryptToken } from "@/lib/meta/oauth";
 import {
   ensureFollowerHistory,
@@ -156,8 +156,16 @@ export async function GET(request: NextRequest) {
           ? ["views", "reach", "saved", "shares", "total_interactions"]
           : ["reach", "saved", "shares", "total_interactions"];
         try {
-          const data = await getMediaInsights(accessToken, m.id, metrics);
-          insightsAvailable = true;
+          // Cached per media id, so a revisit only pays for posts published
+          // since the last one rather than re-requesting the whole library.
+          const data = await getCachedMediaInsights({
+            accessToken,
+            instagramAccountId: account.id,
+            mediaId: m.id,
+            metrics,
+            publishedAt: m.timestamp,
+          });
+          if (data) insightsAvailable = true;
           return data;
         } catch (err) {
           if (err instanceof PermissionError) permissionDenied = true;

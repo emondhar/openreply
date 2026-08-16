@@ -227,7 +227,10 @@ export default function CampaignBuilder({ mode, campaignId }: CampaignBuilderPro
 
   // Load accounts (both modes need them for the preview username + selector).
   useEffect(() => {
-    fetch("/api/dashboard/stats")
+    // The lightweight accounts endpoint, not the analytics aggregation: the
+    // builder is gated on this before it can render, and none of the stats
+    // were ever read here.
+    fetch("/api/instagram/accounts")
       .then((r) => r.json())
       .then((payload) => {
         if (!payload.success) return;

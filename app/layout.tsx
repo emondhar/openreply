@@ -21,7 +21,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full dark">
+    // No `dark` class here. The stylesheet declares `color-scheme: light` and
+    // a light palette, and the codebase has no `dark:` variants — the class
+    // did nothing except contradict the file every page inherits from. If a
+    // dark theme is built later, this is where it opts in, alongside a matching
+    // `color-scheme` in globals.css.
+    <html lang="en" className="h-full">
       <body className="min-h-full bg-background text-foreground font-sans antialiased">
         {children}
         <Analytics />

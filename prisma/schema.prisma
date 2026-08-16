@@ -275,7 +275,14 @@ model DmLog {
   @@index([workspaceId])
   @@index([automationId])
   @@index([instagramAccountId])
-  @@index([status])
+  // Composite indexes for the analytics reads, which all filter on some
+  // combination of workspace, status and time. A bare @@index([status]) was
+  // never worth planning around — the column has five distinct values across
+  // the whole table — so the leading workspaceId is what makes these usable.
+  @@index([workspaceId, status, createdAt])
+  @@index([workspaceId, createdAt])
+  @@index([workspaceId, instagramAccountId, createdAt])
+  @@index([automationId, status])
 }
 
 // Every comment the system has seen, from either the webhook or the polling

@@ -204,9 +204,20 @@ function PostScreen({
         <span className="text-sm font-semibold">{username}</span>
         <span className="ml-auto tracking-widest">···</span>
       </div>
+      {/* The container reserves the space, so this fills a box that already
+          exists and the preview does not reflow as the image decodes. Kept as
+          a plain <img>: Instagram CDN URLs expire and rotate, which next/image
+          cannot pattern-match on. */}
       <div className="min-h-0 flex-1 bg-zinc-800">
         {postThumb && (
-          <img src={postThumb} alt="" referrerPolicy="no-referrer" className="h-full w-full object-cover" />
+          <img
+            src={postThumb}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            referrerPolicy="no-referrer"
+            className="h-full w-full object-cover"
+          />
         )}
       </div>
       <div className="flex shrink-0 items-center gap-4 px-3 py-2.5">

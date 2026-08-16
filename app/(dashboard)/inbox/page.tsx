@@ -13,6 +13,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import AccountSelect, { type AccountOption } from "@/components/account-select";
 import { readCache, writeCache } from "@/lib/client-cache";
+import { useVisibleInterval } from "@/lib/use-visible-interval";
 import type { ConversationListItem } from "@/app/api/instagram/conversations/route";
 import type { ThreadMessage } from "@/app/api/instagram/conversations/[id]/route";
 
@@ -135,9 +136,13 @@ export default function InboxPage() {
       setConvLoading(true);
     }
     void loadConversations(Boolean(cached.data));
-    const timer = window.setInterval(() => void loadConversations(true), POLL_MS);
-    return () => window.clearInterval(timer);
   }, [selectedAccountId, loadConversations]);
+
+  // Polling is gated on tab visibility — see useVisibleInterval.
+  useVisibleInterval(
+    () => void loadConversations(true),
+    selectedAccountId ? POLL_MS : null
+  );
 
   const loadMessages = useCallback(
     async (conversationId: string, silent: boolean) => {
@@ -180,12 +185,14 @@ export default function InboxPage() {
       setThreadLoading(true);
     }
     void loadMessages(activeId, Boolean(cached.data));
-    const timer = window.setInterval(
-      () => void loadMessages(activeId, true),
-      POLL_MS
-    );
-    return () => window.clearInterval(timer);
   }, [activeId, loadMessages]);
+
+  useVisibleInterval(
+    () => {
+      if (activeId) void loadMessages(activeId, true);
+    },
+    activeId ? POLL_MS : null
+  );
 
   // Keep the thread pinned to the latest message.
   useEffect(() => {

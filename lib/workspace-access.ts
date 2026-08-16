@@ -1,3 +1,4 @@
+import { cache } from "react";
 import type { Workspace, WorkspaceRole } from "@/app/generated/prisma/client";
 import { getCurrentUserId } from "@/lib/auth";
 import { prisma } from "@/lib/db/client";
@@ -31,7 +32,12 @@ export function canManageBilling(role: WorkspaceRole) {
   return role === "OWNER";
 }
 
-export async function getCurrentWorkspaceContext(): Promise<WorkspaceContext | null> {
+// Several route handlers call this two or three times in one request (once to
+// authorize, again to read the workspace id). Cached so those collapse to a
+// single membership lookup on top of the already-cached session.
+export const getCurrentWorkspaceContext = cache(async (): Promise<
+  WorkspaceContext | null
+> => {
   const userId = await getCurrentUserId();
   if (!userId) return null;
 
@@ -70,5 +76,5 @@ export async function getCurrentWorkspaceContext(): Promise<WorkspaceContext | n
     workspace,
     role: createdMembership?.role ?? "OWNER",
   };
-}
+});
 

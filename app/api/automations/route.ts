@@ -1,18 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentWorkspaceId } from "@/lib/auth";
+import { getCampaigns } from "@/lib/campaigns/data";
 import { prisma } from "@/lib/db/client";
-import { calculateCtr, normalizeTopKeywords } from "@/lib/tracking/analytics";
-import { buildTrackedUrl } from "@/lib/tracking/message";
 import { generateTrackedLinkSlug } from "@/lib/tracking/server";
-import { buildReportUrl, generateReportShareSlug } from "@/lib/reports/share";
+import { generateReportShareSlug } from "@/lib/reports/share";
 import {
   canManageWorkspace,
   getCurrentWorkspaceContext,
 } from "@/lib/workspace-access";
 
 // This list is read-your-writes (created/imported campaigns must show up
-// immediately), so never cache it at the route or CDN layer.
+// immediately), so never cache it at the route or CDN layer. The responses
+// also carry Cache-Control: private, no-store for the same reason.
 export const dynamic = "force-dynamic";
 
 const createAutomationSchema = z
@@ -129,149 +129,15 @@ export async function GET(request: NextRequest) {
       { status: 401 }
     );
   }
-  const instagramAccountId =
-    request.nextUrl.searchParams.get("instagramAccountId");
-  const accountFilter =
-    instagramAccountId && instagramAccountId !== "all"
-      ? { instagramAccountId }
-      : {};
 
-  const automations = await prisma.automation.findMany({
-    where: { workspaceId, ...accountFilter },
-    include: {
-      instagramAccount: {
-        select: { username: true, instagramId: true },
-      },
-      _count: {
-        select: { dmLogs: true },
-      },
-      trackedLinks: {
-        select: {
-          id: true,
-          slug: true,
-          label: true,
-          destinationUrl: true,
-          _count: { select: { clicks: true } },
-        },
-        orderBy: { createdAt: "asc" },
-      },
-    },
-    orderBy: { createdAt: "desc" },
-  });
-
-  const automationsWithReports = await Promise.all(
-    automations.map(async (automation) => {
-      if (automation.reportShareSlug) return automation;
-
-      const updated = await prisma.automation.update({
-        where: { id: automation.id },
-        data: { reportShareSlug: generateReportShareSlug() },
-        select: { reportShareSlug: true },
-      });
-
-      return {
-        ...automation,
-        reportShareSlug: updated.reportShareSlug,
-      };
-    })
+  const data = await getCampaigns(
+    workspaceId,
+    request.nextUrl.searchParams.get("instagramAccountId")
   );
 
-  const [statusCounts, clickCounts, keywordCounts] = await Promise.all([
-    prisma.dmLog.groupBy({
-      by: ["automationId", "status"],
-      where: { workspaceId },
-      _count: { _all: true },
-    }),
-    prisma.linkClick.groupBy({
-      by: ["automationId"],
-      where: { workspaceId },
-      _count: { _all: true },
-    }),
-    prisma.dmLog.groupBy({
-      by: ["automationId", "matchedKeyword"],
-      where: { workspaceId, matchedKeyword: { not: null } },
-      _count: { _all: true },
-    }),
-  ]);
-
-  const analytics = new Map<
-    string,
-    {
-      sent: number;
-      skipped: number;
-      failed: number;
-      clicks: number;
-      topKeywords: { keyword: string; count: number }[];
-    }
-  >();
-
-  for (const automation of automationsWithReports) {
-    analytics.set(automation.id, {
-      sent: 0,
-      skipped: 0,
-      failed: 0,
-      clicks: 0,
-      topKeywords: [],
-    });
-  }
-
-  for (const row of statusCounts) {
-    const item = analytics.get(row.automationId);
-    if (!item) continue;
-    const count = row._count._all;
-    if (row.status === "SENT") item.sent += count;
-    if (row.status === "FAILED") item.failed += count;
-    if (row.status.startsWith("SKIPPED_")) item.skipped += count;
-  }
-
-  for (const row of clickCounts) {
-    const item = analytics.get(row.automationId);
-    if (item) item.clicks = row._count._all;
-  }
-
-  for (const automation of automationsWithReports) {
-    const item = analytics.get(automation.id);
-    if (!item) continue;
-    item.topKeywords = normalizeTopKeywords(
-      keywordCounts
-        .filter((row) => row.automationId === automation.id)
-        .map((row) => ({
-          matchedKeyword: row.matchedKeyword,
-          _count: row._count._all,
-        })),
-      3
-    );
-  }
-
   return NextResponse.json(
-    {
-    success: true,
-    data: automationsWithReports.map((automation) => {
-      const item = analytics.get(automation.id) ?? {
-        sent: 0,
-        skipped: 0,
-        failed: 0,
-        clicks: 0,
-        topKeywords: [],
-      };
-
-      return {
-        ...automation,
-        trackedLinks: automation.trackedLinks.map((link) => ({
-          ...link,
-          trackedUrl: buildTrackedUrl(link.slug),
-        })),
-        reportUrl: automation.reportShareSlug
-          ? buildReportUrl(automation.reportShareSlug)
-          : null,
-        analytics: {
-          ...item,
-          ctr: calculateCtr(item.clicks, item.sent),
-        },
-      };
-    }),
-    },
-    { headers: { "Cache-Control": "no-store" } }
+    { success: true, data },
+    { headers: { "Cache-Control": "private, no-store" } }
   );
 }
 

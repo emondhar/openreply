@@ -1,8 +1,10 @@
 import { redirect } from "next/navigation";
 import DashboardShell from "@/components/dashboard-shell";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/db/client";
-import { ensureWorkspaceForUser } from "@/lib/workspace";
+import {
+  ensureWorkspaceForUser,
+  getWorkspaceWithAccounts,
+} from "@/lib/workspace";
 
 export default async function DashboardLayout({
   children,
@@ -15,21 +17,35 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
-  const workspace = await ensureWorkspaceForUser(
-    session.user.id,
-    session.user.email
-  );
-  const accounts = await prisma.instagramAccount.findMany({
-    where: { workspaceId: workspace.id },
-    orderBy: { connectedAt: "desc" },
-    select: { username: true },
-  });
+  // One query for the workspace and its accounts, and no write path. This used
+  // to call ensureWorkspaceForUser, which checks for pending invitations on
+  // every dashboard render; that moved to the sign-in event, where it belongs.
+  let membership = await getWorkspaceWithAccounts(session.user.id);
+
+  if (!membership) {
+    // Only reachable if the createUser event never ran for this account.
+    const workspace = await ensureWorkspaceForUser(
+      session.user.id,
+      session.user.email
+    );
+    membership = {
+      role: "OWNER",
+      workspace: {
+        id: workspace.id,
+        name: workspace.name,
+        dmsSentThisPeriod: workspace.dmsSentThisPeriod,
+        instagramAccounts: [],
+      },
+    };
+  }
+
+  const { workspace } = membership;
 
   return (
     <DashboardShell
       workspaceName={workspace.name}
-      instagramUsername={accounts[0]?.username ?? null}
-      instagramAccountCount={accounts.length}
+      instagramUsername={workspace.instagramAccounts[0]?.username ?? null}
+      instagramAccountCount={workspace.instagramAccounts.length}
     >
       {children}
     </DashboardShell>

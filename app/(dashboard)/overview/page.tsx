@@ -9,10 +9,27 @@
  */
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import AccountSelect from "@/components/account-select";
 import StatCard from "@/components/stat-card";
-import FollowerChart from "@/components/follower-chart";
+import { readCache, writeCache } from "@/lib/client-cache";
 import type { OverviewResponse } from "@/app/api/instagram/overview/route";
+
+// Recharts is the largest chunk in the build — around 350 KB — for one line
+// chart that many accounts have no history to draw in. Loading it on demand
+// keeps it off the critical path for the stat tiles and the post table, which
+// are what this page is actually for.
+const FollowerChart = dynamic(() => import("@/components/follower-chart"), {
+  ssr: false,
+  loading: () => <div className="panel rounded h-64 animate-pulse" />,
+});
+
+// Instagram's insights API is slow even with server-side caching in front of
+// it, so a revisit paints the last response immediately and refreshes behind
+// it — the same stale-while-revalidate the inbox and the post picker use.
+const CACHE_MAX_AGE_MS = 5 * 60 * 1000;
+const overviewCacheKey = (accountId: string, count: string) =>
+  `overview:${accountId}:${count}`;
 
 function formatNumber(n: number | null): string {
   if (n === null) return "—";
@@ -41,33 +58,55 @@ export default function OverviewPage() {
   const [count, setCount] = useState("50");
 
   useEffect(() => {
+    let cancelled = false;
     const params = new URLSearchParams();
     if (selectedAccountId !== "all") {
       params.set("instagramAccountId", selectedAccountId);
     }
     params.set("count", count);
 
+    // Paint the cached response first so a revisit — or a return from another
+    // tab — is not a blank skeleton while Instagram is queried again.
+    const cacheKey = overviewCacheKey(selectedAccountId, count);
+    const cached = readCache<OverviewResponse>(cacheKey, CACHE_MAX_AGE_MS);
+    /* eslint-disable react-hooks/set-state-in-effect */
+    if (cached.data) {
+      setData(cached.data);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
+    /* eslint-enable react-hooks/set-state-in-effect */
+
     fetch(`/api/instagram/overview?${params}`)
       .then((r) => r.json())
       .then((res) => {
+        if (cancelled) return;
         if (res.success) {
           setData(res.data);
+          writeCache(cacheKey, res.data);
           setError(null);
-        } else {
+        } else if (!cached.data) {
           setError(res.error ?? "Failed to load overview");
         }
       })
-      .catch(() => setError("Failed to load overview"))
-      .finally(() => setLoading(false));
+      .catch(() => {
+        if (!cancelled && !cached.data) setError("Failed to load overview");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [selectedAccountId, count]);
 
   function handleAccountChange(accountId: string) {
-    setLoading(true);
     setSelectedAccountId(accountId);
   }
 
   function handleCountChange(next: string) {
-    setLoading(true);
     setCount(next);
   }
 
@@ -183,8 +222,12 @@ export default function OverviewPage() {
         <StatCard label="Shares" value={formatNumber(totals.shares)} />
       </div>
 
-      {/* Follower trend — account-level, independent of the post range */}
-      <FollowerChart data={followerHistory} followers={followers} />
+      {/* Follower trend — account-level, independent of the post range. Only
+          mounted when there is history to draw, so accounts with no snapshots
+          never download the charting library at all. */}
+      {followerHistory.length > 0 && (
+        <FollowerChart data={followerHistory} followers={followers} />
+      )}
 
       {/* Per-post table */}
       <div className="panel rounded p-4 sm:p-6">

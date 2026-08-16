@@ -30,6 +30,34 @@ body {
   font-family: var(--font-sans);
 }
 
+/* Tracking is size-specific, never one value for everything: letters read too
+   far apart as type grows. Headings tighten; body copy stays at zero. Element
+   selectors, so any Tailwind tracking-* utility on the element still wins. */
+h1,
+h2,
+h3 {
+  letter-spacing: -0.02em;
+}
+
+h1 {
+  letter-spacing: -0.028em;
+  line-height: 1.1;
+}
+
+/* Feedback lands on press, not on release — the gap between a click and the
+   next route rendering was otherwise completely silent. Buttons only: a
+   blanket rule on anchors would scale full-width nav rows and card links,
+   which reads as the layout wobbling rather than a control responding. */
+button:not(:disabled):active {
+  transform: scale(0.985);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button:not(:disabled):active {
+    transform: none;
+  }
+}
+
 /* Focus ring — visible, for keyboard users. */
 :focus-visible {
   outline: 2px solid var(--color-accent);

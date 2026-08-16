@@ -26,7 +26,9 @@ export default function ImportCampaignsPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/dashboard/stats")
+    // One indexed query, not the full dashboard analytics sweep — this page
+    // only needs the account selector.
+    fetch("/api/instagram/accounts")
       .then((res) => res.json())
       .then((payload) => {
         if (payload.success) {
