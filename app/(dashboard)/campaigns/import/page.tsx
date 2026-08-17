@@ -92,15 +92,15 @@ export default function ImportCampaignsPage() {
           Paste a CSV with one row per campaign. Each row opens in the builder
           prefilled and editable, so you can review it and pick the reel before
           saving. Required columns are{" "}
-          <code className="text-accent">keywords</code> and{" "}
-          <code className="text-accent">dm_message</code>. Optional:{" "}
-          <code className="text-accent">name</code>,{" "}
-          <code className="text-accent">public_reply</code>,{" "}
-          <code className="text-accent">tracked_url</code>,{" "}
-          <code className="text-accent">opening_dm</code>,{" "}
-          <code className="text-accent">opening_dm_button</code>. Keywords go in
+          <code className="text-accent-strong">keywords</code> and{" "}
+          <code className="text-accent-strong">dm_message</code>. Optional:{" "}
+          <code className="text-accent-strong">name</code>,{" "}
+          <code className="text-accent-strong">public_reply</code>,{" "}
+          <code className="text-accent-strong">tracked_url</code>,{" "}
+          <code className="text-accent-strong">opening_dm</code>,{" "}
+          <code className="text-accent-strong">opening_dm_button</code>. Keywords go in
           one cell, separated by commas. Use{" "}
-          <code className="text-accent">{"{link}"}</code> in the message to
+          <code className="text-accent-strong">{"{link}"}</code> in the message to
           insert the tracked link.
         </p>
       </div>

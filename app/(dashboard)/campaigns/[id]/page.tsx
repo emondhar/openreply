@@ -485,7 +485,7 @@ function PostBreakdown({
                       href={post.permalink ?? "#"}
                       target="_blank"
                       rel="noreferrer"
-                      className="flex items-center gap-2 hover:text-accent"
+                      className="flex items-center gap-2 hover:text-accent-strong"
                     >
                       {thumb ? (
                         /* eslint-disable-next-line @next/next/no-img-element */
@@ -572,7 +572,7 @@ function ActivityChart({
             >
               <div className="flex w-full flex-1 items-end">
                 <div
-                  className="w-full rounded-t bg-accent/70"
+                  className="w-full rounded-t bg-accent"
                   style={{ height: `${Math.round((day.sent / peak) * 100)}%` }}
                 />
               </div>

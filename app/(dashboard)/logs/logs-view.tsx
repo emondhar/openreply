@@ -78,7 +78,7 @@ export default function LogsView({
                   active:scale-[0.97]
                   ${
                     isActive
-                      ? "bg-accent/15 text-accent border border-accent/20"
+                      ? "bg-accent/15 text-accent-strong border border-accent/20"
                       : "bg-surface text-muted border border-border hover:border-border-hover hover:text-foreground"
                   }
                 `}
@@ -186,7 +186,7 @@ export default function LogsView({
                 onClick={() =>
                   navigate({ page: String(pagination.page - 1) })
                 }
-                className="px-3 py-1.5 rounded-lg text-xs font-medium text-muted border border-border hover:text-foreground hover:border-border-hover transition-all active:scale-[0.97] disabled:opacity-30 disabled:pointer-events-none"
+                className="px-3 py-1.5 rounded-lg text-xs font-medium text-muted border border-border hover:text-foreground hover:border-border-hover transition-all active:scale-[0.97] disabled:opacity-50 disabled:pointer-events-none"
               >
                 Previous
               </button>
@@ -198,7 +198,7 @@ export default function LogsView({
                 onClick={() =>
                   navigate({ page: String(pagination.page + 1) })
                 }
-                className="px-3 py-1.5 rounded-lg text-xs font-medium text-muted border border-border hover:text-foreground hover:border-border-hover transition-all active:scale-[0.97] disabled:opacity-30 disabled:pointer-events-none"
+                className="px-3 py-1.5 rounded-lg text-xs font-medium text-muted border border-border hover:text-foreground hover:border-border-hover transition-all active:scale-[0.97] disabled:opacity-50 disabled:pointer-events-none"
               >
                 Next
               </button>

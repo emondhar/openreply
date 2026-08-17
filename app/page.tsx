@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties } from "react";
 import Link from "next/link";
 
 export const metadata: Metadata = {
@@ -20,8 +20,7 @@ export const metadata: Metadata = {
 const GITHUB_URL = "https://github.com/diwenne/openreply";
 
 // Real numbers, and the last one is the joke. Nothing here is a projection or
-// a rounded-up marketing figure — that was the point of replacing the previous
-// block, which advertised "24/7 monitoring" like a product with customers.
+// a rounded-up marketing figure.
 const heroStats = [
   { value: "$0", label: "monthly subscription replaced" },
   { value: "~1s", label: "comment to DM" },
@@ -30,233 +29,28 @@ const heroStats = [
 
 const flowSteps = [
   {
-    eyebrow: "Watches",
+    name: "Watches",
     description:
       "A webhook catches every comment on the posts I've armed. A polling sweep picks up whatever Instagram forgets to push, because Instagram forgets a lot.",
   },
   {
-    eyebrow: "Matches",
+    name: "Matches",
     description:
       "If the comment contains the keyword I set, it queues a DM and leaves a public reply so the thread doesn't look dead.",
   },
   {
-    eyebrow: "Sends",
+    name: "Sends",
     description:
       "Official Instagram API, rate-limited, logged. No browser automation, no scraping, nothing that gets an account banned.",
   },
 ];
 
-/* Static, faithful copies of the real Overview and Dashboard screens, built in
-   the app's own design tokens so what visitors see is what the app looks like. */
-
-function AppWindow({ label, children }: { label: string; children: ReactNode }) {
+/** Section eyebrow. `sig` is the signature colour for that section's mark. */
+function Eyebrow({ children, sig }: { children: string; sig: string }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-background shadow-xl shadow-brown/10">
-      <div className="flex items-center gap-2 border-b border-border bg-surface px-4 py-3">
-        <span className="h-2.5 w-2.5 rounded-full bg-border" />
-        <span className="h-2.5 w-2.5 rounded-full bg-border" />
-        <span className="h-2.5 w-2.5 rounded-full bg-border" />
-        <span className="ml-2 text-xs text-muted">{label}</span>
-      </div>
-      <div className="p-5">{children}</div>
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded border border-border bg-surface p-4">
-      <p className="text-sm text-muted">{label}</p>
-      <p className="mt-1 text-2xl font-semibold tabular-nums text-foreground">
-        {value}
-      </p>
-    </div>
-  );
-}
-
-const overviewStats = [
-  ["Views", "847.2K"],
-  ["Reach", "612.4K"],
-  ["Likes", "38.1K"],
-  ["Comments", "4,204"],
-  ["Saved", "9,712"],
-  ["Shares", "2,340"],
-];
-
-const overviewPosts = [
-  ["Day 41 — the build", "214.8K", "9.1K", "Apr 3"],
-  ["Tabla at 2am", "88.4K", "5.2K", "Mar 28"],
-  ["Why I stopped", "51.3K", "3.4K", "Mar 21"],
-];
-
-function OverviewPreview() {
-  return (
-    <AppWindow label="app / overview">
-      <div className="flex items-end justify-between">
-        <div>
-          <h3 className="text-base font-semibold text-foreground">Overview</h3>
-          <p className="mt-1 text-xs text-muted">
-            Recent — 24 posts from @emondhar
-          </p>
-        </div>
-        <span className="rounded border border-border px-2 py-1 text-xs text-muted">
-          Last 50
-        </span>
-      </div>
-
-      <div className="mt-4 grid grid-cols-3 gap-3">
-        {overviewStats.map(([label, value]) => (
-          <Stat key={label} label={label} value={value} />
-        ))}
-      </div>
-
-      <div className="mt-4 rounded border border-border bg-surface p-4">
-        <div className="flex items-baseline justify-between">
-          <p className="text-sm font-semibold text-foreground">
-            Followers over time
-          </p>
-          <p className="text-xs text-muted tabular-nums">
-            48,210 <span className="text-success">+1,240</span> · 30d
-          </p>
-        </div>
-        <svg
-          viewBox="0 0 300 64"
-          preserveAspectRatio="none"
-          className="mt-3 h-16 w-full"
-          aria-hidden="true"
-        >
-          <polyline
-            points="0,54 43,49 86,51 129,40 171,36 214,26 257,20 300,9"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            vectorEffect="non-scaling-stroke"
-            className="text-accent"
-          />
-        </svg>
-      </div>
-
-      <div className="mt-4 rounded border border-border bg-surface p-4">
-        <p className="text-sm font-semibold text-foreground">Posts</p>
-        <table className="mt-3 w-full text-sm">
-          <thead>
-            <tr className="border-b border-border text-left text-[11px] uppercase tracking-wide text-muted">
-              <th className="pb-2 pr-3 font-medium">Post</th>
-              <th className="pb-2 px-3 text-right font-medium">Views</th>
-              <th className="pb-2 px-3 text-right font-medium">Likes</th>
-              <th className="pb-2 pl-3 text-right font-medium">Date</th>
-            </tr>
-          </thead>
-          <tbody>
-            {overviewPosts.map(([post, views, likes, date]) => (
-              <tr key={post} className="border-b border-border last:border-0">
-                <td className="py-2 pr-3 text-foreground">{post}</td>
-                <td className="py-2 px-3 text-right tabular-nums text-muted">
-                  {views}
-                </td>
-                <td className="py-2 px-3 text-right tabular-nums text-muted">
-                  {likes}
-                </td>
-                <td className="py-2 pl-3 text-right text-muted">{date}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </AppWindow>
-  );
-}
-
-function MatchedCommentCard() {
-  return (
-    <div className="w-64 rounded-lg border border-border bg-surface p-4 shadow-xl shadow-brown/10">
-      <p className="text-xs text-muted">New comment</p>
-      <p className="mt-1 text-sm font-semibold text-foreground">@maya.co</p>
-      <p className="mt-1 text-sm text-muted">LINK please</p>
-      <div className="mt-3 border-t border-border pt-3">
-        <p className="text-xs text-muted">
-          Matched <span className="text-accent">LINK</span>
-        </p>
-        <p className="mt-1 text-sm font-medium text-success">
-          Queued private reply
-        </p>
-      </div>
-    </div>
-  );
-}
-
-const dashboardStats = [
-  ["Active Campaigns", "3"],
-  ["DMs Sent", "1,284"],
-  ["Skipped", "42"],
-  ["Failed", "3"],
-  ["Clicks", "356"],
-  ["CTR", "27.7%"],
-];
-
-const dashboardChart: [string, number][] = [
-  ["Mon", 42],
-  ["Tue", 68],
-  ["Wed", 51],
-  ["Thu", 94],
-  ["Fri", 120],
-  ["Sat", 86],
-  ["Sun", 73],
-];
-
-const dashboardActivity = [
-  ["@maya.co", "Reel link", "Sent", "text-success"],
-  ["@founder.ray", "Reel link", "Sent", "text-success"],
-  ["@shop.ava", "Tabla course", "Queued", "text-warning"],
-];
-
-function DashboardPreview() {
-  const maxDM = Math.max(...dashboardChart.map(([, n]) => n));
-  return (
-    <AppWindow label="app / dashboard">
-      <h3 className="text-base font-semibold text-foreground">Hello, Emon!</h3>
-      <p className="mt-1 text-xs text-muted">1 connected account · 340 contacts</p>
-
-      <div className="mt-4 grid grid-cols-3 gap-3">
-        {dashboardStats.map(([label, value]) => (
-          <Stat key={label} label={label} value={value} />
-        ))}
-      </div>
-
-      <div className="mt-4 rounded border border-border bg-surface p-4">
-        <p className="text-sm font-semibold text-foreground">DMs — Last 7 Days</p>
-        <div className="mt-4 flex h-32 items-end gap-2">
-          {dashboardChart.map(([day, n]) => (
-            <div key={day} className="flex flex-1 flex-col items-center gap-2">
-              <span className="text-[10px] tabular-nums text-muted">{n}</span>
-              <div
-                className="w-full rounded-sm bg-accent"
-                style={{ height: `${Math.max((n / maxDM) * 100, 4)}%` }}
-              />
-              <span className="text-[10px] text-muted">{day}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="mt-4 rounded border border-border bg-surface p-4">
-        <p className="text-sm font-semibold text-foreground">Recent Activity</p>
-        <div className="mt-3 space-y-2">
-          {dashboardActivity.map(([user, automation, status, color]) => (
-            <div
-              key={user}
-              className="flex items-center justify-between gap-3 border-b border-border py-2 text-sm last:border-0"
-            >
-              <span className="truncate text-foreground">{user}</span>
-              <span className="truncate text-muted">{automation}</span>
-              <span className={`text-sm ${color}`}>{status}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </AppWindow>
+    <p className="b-eyebrow" style={{ "--sig": sig } as CSSProperties}>
+      {children}
+    </p>
   );
 }
 
@@ -265,11 +59,7 @@ export default function Home() {
     <main className="min-h-screen bg-background text-foreground">
       <header className="b-glass sticky top-0 z-40 border-b border-border">
         <div className="b-container flex h-16 w-full items-center justify-between">
-          <Link
-            href="/"
-            className="flex items-center gap-3"
-            aria-label="ManyChat by Emon home"
-          >
+          <Link href="/" aria-label="ManyChat by Emon home">
             <span className="b-display text-lg">
               ManyChat by <span className="b-script">E</span>mon
             </span>
@@ -281,162 +71,140 @@ export default function Home() {
         </div>
       </header>
 
-      <section className="b-container grid w-full items-center gap-10 pb-16 pt-12 sm:pt-18 lg:grid-cols-[0.95fr_1.05fr] lg:pb-24">
-        <div className="max-w-3xl">
-          {/* Lime is the signature for this page, the way each section of
-              emondhar.com carries one. */}
-          <p className="b-eyebrow" style={{ "--sig": "var(--lime)" } as CSSProperties}>
-            Private instance · Not for sale
-          </p>
+      {/* Hero. One column, left-aligned, nothing beside it — the page has
+          nothing to demonstrate, so a product shot would only be inventing
+          something to look at. */}
+      <section className="b-container w-full pb-(--section-y) pt-(--header-y)">
+        <Eyebrow sig="var(--lime)">Private instance · Not for sale</Eyebrow>
 
-          <h1 className="b-display mt-6 text-5xl sm:text-6xl lg:text-7xl">
-            Hey. You found my special Many<span className="b-script">C</span>hat.
-          </h1>
+        <h1 className="b-display mt-6 max-w-[16ch] text-[clamp(2.6rem,7.4vw,5.5rem)]">
+          Hey. You found my special Many<span className="b-script">C</span>hat.
+        </h1>
 
-          <p className="mt-6 max-w-2xl text-lg leading-8 text-muted">
+        <div className="mt-8 max-w-(--measure) space-y-4 text-lg leading-8 text-muted">
+          <p>
             This is the thing that DMs you the link when you comment a keyword
             on my reel. It runs on my own server, on the official Meta API, and
             it costs me roughly nothing — which was the entire point.
           </p>
-
-          <p className="mt-4 max-w-2xl text-lg leading-8 text-muted">
+          <p>
             There&rsquo;s no signup. If you don&rsquo;t already have a login,
             you&rsquo;re in the wrong place, and honestly, good for you for
             poking around.
           </p>
-
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Link href="/login" className="b-pill b-pill--filled">
-              Sign in
-            </Link>
-            <a href="#why" className="b-pill">
-              Why this exists
-            </a>
-          </div>
-
-          <dl className="mt-10 grid max-w-xl grid-cols-3 gap-3">
-            {heroStats.map((stat) => (
-              <div key={stat.label} className="border border-border bg-surface p-4">
-                <dt className="b-display text-2xl tabular-nums text-foreground">
-                  {stat.value}
-                </dt>
-                <dd className="mt-1 text-xs leading-5 text-muted">
-                  {stat.label}
-                </dd>
-              </div>
-            ))}
-          </dl>
         </div>
 
-        <div className="relative">
-          <OverviewPreview />
-          <div className="absolute -bottom-8 -left-6 hidden lg:block">
-            <MatchedCommentCard />
-          </div>
+        <div className="mt-10 flex flex-col gap-3 sm:flex-row">
+          <Link href="/login" className="b-pill b-pill--filled">
+            Sign in
+          </Link>
+          <a href="#why" className="b-pill">
+            Why this exists
+          </a>
         </div>
+
+        {/* Ruled columns rather than boxed tiles: three numbers do not need
+            three containers to be read as a set. */}
+        <dl className="mt-(--block-y) grid max-w-2xl grid-cols-1 border-t border-border sm:grid-cols-3">
+          {heroStats.map((stat) => (
+            <div
+              key={stat.label}
+              className="border-b border-border py-5 sm:border-b-0 sm:pr-6"
+            >
+              <dt className="b-display text-3xl tabular-nums text-foreground">
+                {stat.value}
+              </dt>
+              <dd className="mt-1.5 text-sm leading-5 text-muted">
+                {stat.label}
+              </dd>
+            </div>
+          ))}
+        </dl>
       </section>
 
       <section
         id="why"
-        className="border-y border-border bg-surface py-20 scroll-mt-16"
+        className="b-container w-full scroll-mt-16 border-t border-border py-(--section-y)"
       >
+        <Eyebrow sig="var(--pink)">Why this exists</Eyebrow>
+        <h2 className="b-display mt-5 max-w-[14ch] text-[clamp(2rem,4.6vw,3.4rem)]">
+          The short <span className="b-script">v</span>ersion
+        </h2>
+        <div className="mt-7 max-w-(--measure) space-y-4 text-base leading-8 text-muted">
+          <p>
+            ManyChat wanted a subscription to send one link when someone
+            comments one word. I looked at the pricing page, closed the tab, and
+            forked OpenReply instead.
+          </p>
+          <p>
+            Now it sits on my own domain, sends my own DMs, and charges me
+            nothing when a reel actually works. That&rsquo;s the whole story.
+            There&rsquo;s no startup here.
+          </p>
+        </div>
+      </section>
+
+      <section className="b-container w-full border-t border-border py-(--section-y)">
+        <Eyebrow sig="var(--cyan)">How it works</Eyebrow>
+        <h2 className="b-display mt-5 max-w-[14ch] text-[clamp(2rem,4.6vw,3.4rem)]">
+          What it <span className="b-script">a</span>ctually does
+        </h2>
+
+        {/* Numbered because the order is information here — a comment is
+            watched, then matched, then sent — not because numbers decorate. */}
+        <ol className="mt-(--block-y) max-w-3xl">
+          {flowSteps.map((step, i) => (
+            <li
+              key={step.name}
+              className="grid gap-x-6 gap-y-2 border-t border-border py-7 sm:grid-cols-[3rem_9rem_1fr]"
+            >
+              <span className="text-sm tabular-nums text-muted-2">
+                {String(i + 1).padStart(2, "0")}
+              </span>
+              <h3 className="b-display text-base text-foreground">
+                {step.name}
+              </h3>
+              <p className="text-base leading-7 text-muted">
+                {step.description}
+              </p>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      {/* The one dark moment on the page, the way emondhar.com turns its story
+          section to night. Every token inside re-points itself. */}
+      <section className="night border-y border-border py-(--section-y)">
         <div className="b-container w-full">
-          <div className="max-w-2xl">
-            <p className="b-eyebrow" style={{ "--sig": "var(--pink)" } as CSSProperties}>
-              Why this exists
-            </p>
-            <h2 className="b-display mt-4 text-4xl sm:text-5xl">
-              The short <span className="b-script">v</span>ersion
-            </h2>
-            <p className="mt-5 text-base leading-8 text-muted">
-              ManyChat wanted a subscription to send one link when someone
-              comments one word. I looked at the pricing page, closed the tab,
-              and forked OpenReply instead.
-            </p>
-            <p className="mt-4 text-base leading-8 text-muted">
-              Now it sits on my own domain, sends my own DMs, and charges me
-              nothing when a reel actually works. That&rsquo;s the whole story.
-              There&rsquo;s no startup here.
-            </p>
-          </div>
+          <Eyebrow sig="var(--yellow)">The dashboard</Eyebrow>
+          <h2 className="b-display mt-5 max-w-[16ch] text-[clamp(2rem,4.6vw,3.4rem)]">
+            Everything is tra<span className="b-script">c</span>eable
+          </h2>
+          <p className="mt-7 max-w-(--measure) text-base leading-8 text-muted">
+            Queued, matched, sent, skipped, failed, rate-limited. If a DM
+            didn&rsquo;t land, I know exactly where it died. That&rsquo;s the
+            part I actually wanted.
+          </p>
         </div>
       </section>
 
-      <section
-        id="how"
-        className="b-container w-full py-20 scroll-mt-16"
-      >
-        <div className="grid gap-10 lg:grid-cols-[0.82fr_1.18fr] lg:items-center">
-          <div>
-            <p className="b-eyebrow" style={{ "--sig": "var(--cyan)" } as CSSProperties}>
-              How it works
-            </p>
-            <h2 className="b-display mt-4 text-4xl sm:text-5xl">
-              What it <span className="b-script">a</span>ctually does
-            </h2>
-          </div>
-
-          <div className="grid gap-4">
-            {flowSteps.map((step) => (
-              <article
-                key={step.eyebrow}
-                className="grid gap-4 border border-border bg-surface p-5 sm:grid-cols-[120px_1fr]"
-              >
-                <p className="b-display text-sm text-accent-strong">
-                  {step.eyebrow}
-                </p>
-                <p className="text-sm leading-6 text-muted">
-                  {step.description}
-                </p>
-              </article>
-            ))}
-          </div>
-        </div>
+      <section className="b-container w-full py-(--section-y)">
+        <h2 className="b-display max-w-[18ch] text-[clamp(2rem,4.6vw,3.4rem)]">
+          That&rsquo;s it. That&rsquo;s the{" "}
+          <span className="b-script">p</span>age.
+        </h2>
+        <p className="mt-6 max-w-(--measure) text-base leading-8 text-muted">
+          If you&rsquo;re logged in, the dashboard is behind the button. If
+          you&rsquo;re not, go watch the reel that sent you here.
+        </p>
+        <Link href="/login" className="b-pill b-pill--filled mt-8">
+          Sign in
+        </Link>
       </section>
 
-      {/* The one dark act on the page, the way emondhar.com turns the story
-          section to night. Every token below re-points itself — the preview
-          window inside needs no dark variant of its own. */}
-      <section className="night border-y border-border py-20">
-        <div className="b-container grid w-full gap-10 lg:grid-cols-[1.08fr_0.92fr] lg:items-center">
-          <DashboardPreview />
-
-          <div>
-            <p className="b-eyebrow" style={{ "--sig": "var(--yellow)" } as CSSProperties}>
-              The dashboard
-            </p>
-            <h2 className="b-display mt-4 text-4xl sm:text-5xl">
-              Everything is tra<span className="b-script">c</span>eable
-            </h2>
-            <p className="mt-5 text-base leading-8 text-muted">
-              Queued, matched, sent, skipped, failed, rate-limited. If a DM
-              didn&rsquo;t land, I know exactly where it died. That&rsquo;s the
-              part I actually wanted.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section className="b-container w-full py-20">
-        <div className="grid gap-8 border border-border bg-surface-2 p-6 sm:p-10 lg:grid-cols-[1fr_auto] lg:items-center">
-          <div>
-            <h2 className="b-display max-w-3xl text-4xl sm:text-5xl">
-              That&rsquo;s it. That&rsquo;s the <span className="b-script">p</span>age.
-            </h2>
-            <p className="mt-4 text-base leading-7 text-muted">
-              If you&rsquo;re logged in, the dashboard is behind the button. If
-              you&rsquo;re not, go watch the reel that sent you here.
-            </p>
-          </div>
-          <Link href="/login" className="b-pill b-pill--filled">
-            Sign in
-          </Link>
-        </div>
-      </section>
-
-      <footer className="border-t border-border py-8">
+      <footer className="border-t border-border py-10">
         <div className="b-container w-full space-y-2 text-sm leading-6 text-muted">
-          <p className="font-semibold text-foreground">
+          <p className="text-foreground">
             ManyChat by Emon · Private instance, self-hosted in Montreal.
           </p>
           <p>
@@ -445,7 +213,7 @@ export default function Home() {
               href={GITHUB_URL}
               target="_blank"
               rel="noreferrer"
-              className="underline underline-offset-2 transition hover:text-accent-strong"
+              className="text-accent-strong underline underline-offset-2"
             >
               OpenReply
             </a>{" "}
@@ -454,7 +222,7 @@ export default function Home() {
               href={GITHUB_URL}
               target="_blank"
               rel="noreferrer"
-              className="underline underline-offset-2 transition hover:text-accent-strong"
+              className="text-accent-strong underline underline-offset-2"
             >
               go star it
             </a>

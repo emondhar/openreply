@@ -36,6 +36,13 @@
   --surface-hover: #e5dbc1;
   --hairline: #d8ceb6;
   --hairline-strong: #c6b99c;
+  /* Interactive boundaries — input, select, textarea, toggle tracks — carry
+     their own token. A decorative divider may sit at 1.3:1 because nothing
+     depends on perceiving it, but a form field's edge is information: WCAG
+     1.4.11 wants 3:1, and --hairline gives 1.24:1 on a panel. Solved against
+     surface-2, the darkest ground a field can land on, so it clears 3:1 on
+     every one of them (3.52 / 3.30 / 3.01). */
+  --field-line: #827c6d;
   --fg: var(--brown);
 
   /* --muted-2 is tuned against the *raised* ground, not the page, because that
@@ -43,7 +50,10 @@
      --surface, and a value tuned to the page alone falls under AA the moment
      it sits on a panel. */
   --muted: #63564e;
-  --muted-2: #6b5e54;
+  /* Darkened one step from the reference's #6b5e54, which measured 4.54:1 on
+     surface-2 — passing, but with 0.04 of headroom. This app stacks panels on
+     panels more than a brand page does, so the token needed real margin. */
+  --muted-2: #675a51;
 
   /* The green measures 4.18:1 on cream — just under AA for body text — so
      --accent-strong is the darkened step (6.1:1) used wherever it carries real
@@ -55,7 +65,8 @@
      thing, and lime already means "this section is Builds". Warm-shifted so
      they belong to this ground rather than arriving from Tailwind. */
   --success: #00660a;
-  --warning: #8a5a00;
+  /* #8a5a00 fell to 4.30:1 on surface-2. This clears 4.5 on all three. */
+  --warning: #865700;
   --error: #a3231b;
 
   /* ------------------------------------------------------------ night
@@ -120,6 +131,7 @@
   --surface-hover: #382c29;
   --hairline: var(--night-line);
   --hairline-strong: #5c4a42;
+  --field-line: #8e7165;
   --fg: var(--cream);
   --muted: #b9a99d;
   --muted-2: #cbbdb1;
@@ -144,6 +156,7 @@
   --color-surface-hover: var(--surface-hover);
   --color-border: var(--hairline);
   --color-border-hover: var(--hairline-strong);
+  --color-field: var(--field-line);
   --color-muted: var(--muted);
   --color-muted-2: var(--muted-2);
   --color-accent: var(--accent);
@@ -321,6 +334,59 @@ h1 {
   color: var(--bg);
 }
 
+/* ---------------------------------------------------------------- badges
+   Filled, not tinted-on-ground. This is the daylight half of the one rule: a
+   neon can hold brown text at 6.5:1 (pink) to 11.6:1 (yellow), so a status chip
+   is the one place on the light page where the video colours run at full
+   strength.
+
+   It also fixes a measured failure. The tinted approach — bg-warning/10 with
+   text-warning — composites to a ground that changes with whatever panel it
+   lands on, and on surface-2 that pair fell to 3.99:1. A filled chip carries
+   its own ground, so it reads identically on the page, on a panel, on a panel
+   inside a panel, and inside a .night section. The ink is always brown for the
+   same reason: it is the one value guaranteed to be legible on all four. */
+
+.b-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  border-radius: 999px;
+  padding: 0.15em 0.65em;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+  color: var(--brown);
+  /* The fills sit only 1.1–1.6:1 from the cream ground, so the chip needs an
+     edge to read as an object rather than as tinted text. */
+  border: 1px solid color-mix(in srgb, var(--brown) 22%, transparent);
+}
+
+.b-badge--ok {
+  background: var(--lime);
+}
+
+.b-badge--warn {
+  background: var(--yellow);
+}
+
+.b-badge--info {
+  background: var(--cyan);
+}
+
+/* Not one of the seven: an alarm has to read as an alarm rather than as
+   another neon, and it still clears 6.2:1 under brown. */
+.b-badge--alert {
+  background: #f0a49c;
+}
+
+.b-badge--quiet {
+  background: var(--surface-2);
+  color: var(--muted);
+  border-color: var(--hairline-strong);
+}
+
 /* ---------------------------------------------------------------- chrome
    Nav and toolbars are translucent layers with content scrolling underneath,
    not opaque bars that consume a fixed strip. Saturate as well as blur: blur
@@ -368,6 +434,15 @@ h1 {
 :focus-visible {
   outline: 2px solid var(--accent-strong);
   outline-offset: 2px;
+}
+
+/* Every form control gets the perceivable boundary, whatever border utility
+   the markup happens to carry. Set here rather than per-component so a new
+   field cannot be built without it. */
+input:not([type="checkbox"]):not([type="radio"]),
+textarea,
+select {
+  border-color: var(--field-line);
 }
 
 /* Form fields already have a border, so keep the focus ring hugging the

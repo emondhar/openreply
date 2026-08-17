@@ -244,7 +244,7 @@ export default function PostPicker({
             type="button"
             onClick={selectAllVisible}
             disabled={visible.length === 0 || atCap}
-            className="rounded border border-border px-2 py-1 text-foreground hover:border-border-hover disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded border border-border px-2 py-1 text-foreground hover:border-border-hover disabled:cursor-not-allowed disabled:opacity-50"
           >
             Select all {visible.length}
           </button>
@@ -252,7 +252,7 @@ export default function PostPicker({
             type="button"
             onClick={() => emit([])}
             disabled={selectedPostIds.length === 0}
-            className="rounded border border-border px-2 py-1 text-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded border border-border px-2 py-1 text-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
           >
             Clear
           </button>
@@ -262,7 +262,7 @@ export default function PostPicker({
             aria-expanded={ruleOpen}
             className={`rounded border px-2 py-1 ${
               rule
-                ? "border-accent/50 text-accent"
+                ? "border-accent/50 text-accent-strong"
                 : "border-border text-muted hover:text-foreground"
             }`}
           >
@@ -295,7 +295,7 @@ export default function PostPicker({
                     aria-pressed={on}
                     className={`rounded border px-2.5 py-1 text-xs ${
                       on
-                        ? "border-accent bg-accent/10 text-accent"
+                        ? "border-accent bg-accent/10 text-accent-strong"
                         : "border-border text-muted hover:text-foreground"
                     }`}
                   >
@@ -372,7 +372,7 @@ export default function PostPicker({
                 type="button"
                 onClick={() => emit([...new Set([...selectedPostIds, ...ruleMatches.map((p) => p.id)])])}
                 disabled={ruleMatches.length === 0}
-                className="rounded border border-border px-2.5 py-1 text-xs text-foreground hover:border-border-hover disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded border border-border px-2.5 py-1 text-xs text-foreground hover:border-border-hover disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Apply as selection
               </button>
@@ -400,7 +400,7 @@ export default function PostPicker({
             <button
               type="button"
               onClick={() => onRuleChange(draft)}
-              className="text-xs text-accent hover:underline"
+              className="text-xs text-accent-strong hover:underline"
             >
               Update the active rule to these conditions
             </button>
@@ -460,7 +460,7 @@ export default function PostPicker({
                           : undefined
                   }
                   className={`
-                    relative aspect-square overflow-hidden rounded border-2 disabled:cursor-not-allowed disabled:opacity-40
+                    relative aspect-square overflow-hidden rounded border-2 disabled:cursor-not-allowed disabled:opacity-50
                     ${
                       isSelected
                         ? "border-accent"
@@ -508,7 +508,7 @@ export default function PostPicker({
                     ✓
                   </span>
                   {byRule && (
-                    <span className="absolute inset-x-0 bottom-0 bg-accent/70 py-0.5 text-[10px] text-foreground">
+                    <span className="absolute inset-x-0 bottom-0 bg-accent-strong py-0.5 text-[10px] font-semibold text-cream">
                       Rule
                     </span>
                   )}

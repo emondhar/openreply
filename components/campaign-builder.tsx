@@ -867,7 +867,7 @@ export default function CampaignBuilder({ mode, campaignId }: CampaignBuilderPro
                   onClick={() =>
                     setPublicReplyMessages((prev) => [...prev, ""])
                   }
-                  className="text-xs font-medium text-accent hover:underline"
+                  className="text-xs font-medium text-accent-strong hover:underline"
                 >
                   + Add another reply
                 </button>

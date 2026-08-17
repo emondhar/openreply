@@ -573,16 +573,14 @@ export default function CampaignsView({
                     @{auto.instagramAccount.username}
                   </span>
                   <span
-                    className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                      auto.isActive
-                        ? "bg-success/10 text-success"
-                        : "bg-surface-hover text-muted"
+                    className={`b-badge ${
+                      auto.isActive ? "b-badge--ok" : "b-badge--quiet"
                     }`}
                   >
                     {auto.isActive ? "Active" : "Paused"}
                   </span>
                   {auto.pendingNextReel && (
-                    <span className="shrink-0 rounded-full bg-warning/10 px-2 py-0.5 text-xs font-medium text-warning">
+                    <span className="b-badge b-badge--warn shrink-0">
                       Waiting for next reel
                     </span>
                   )}
@@ -592,17 +590,17 @@ export default function CampaignsView({
                     </span>
                   )}
                   {auto.postRule != null && (
-                    <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
+                    <span className="b-badge b-badge--info shrink-0">
                       Auto-adding
                     </span>
                   )}
                   {auto.requireFollow && (
-                    <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
+                    <span className="b-badge b-badge--info shrink-0">
                       Follow gate
                     </span>
                   )}
                   {auto.trackedLinks.length >= 2 && (
-                    <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
+                    <span className="b-badge b-badge--info shrink-0">
                       2 links
                     </span>
                   )}
@@ -613,7 +611,7 @@ export default function CampaignsView({
                   {auto.keywords.map((kw) => (
                     <span
                       key={kw}
-                      className="px-2 py-0.5 rounded-md bg-accent/10 text-accent text-xs font-medium border border-accent/10"
+                      className="b-badge b-badge--quiet"
                     >
                       {kw}
                     </span>

@@ -105,10 +105,8 @@ export default function SettingsView({
               </p>
             </div>
             <span
-              className={`px-3 py-1.5 rounded-full text-xs font-medium ${
-                accounts.length > 0
-                  ? "bg-success/10 text-success"
-                  : "bg-warning/10 text-warning"
+              className={`b-badge ${
+                accounts.length > 0 ? "b-badge--ok" : "b-badge--warn"
               }`}
             >
               {accounts.length > 0 ? "Connected" : "Not connected"}

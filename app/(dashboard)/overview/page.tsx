@@ -130,7 +130,7 @@ export default function OverviewPage() {
         {error.includes("connect") && (
           <a
             href="/api/instagram/connect"
-            className="mt-4 inline-block text-sm text-accent hover:underline"
+            className="mt-4 inline-block text-sm text-accent-strong hover:underline"
           >
             Connect Instagram
           </a>
@@ -205,7 +205,7 @@ export default function OverviewPage() {
           </p>
           <a
             href="/api/instagram/connect"
-            className="mt-3 inline-block text-sm text-accent hover:underline"
+            className="mt-3 inline-block text-sm text-accent-strong hover:underline"
           >
             Reconnect Instagram
           </a>
@@ -263,7 +263,7 @@ export default function OverviewPage() {
                           href={p.permalink}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-foreground hover:text-accent truncate block"
+                          className="text-foreground hover:text-accent-strong truncate block"
                         >
                           {p.caption || `${p.mediaType} post`}
                         </a>

@@ -69,7 +69,7 @@ export default function DashboardView({
             {stats.contactsCount}{" "}
             {stats.contactsCount === 1 ? "contact" : "contacts"}
             {" · "}
-            <a href="/logs" className="text-accent hover:underline">
+            <a href="/logs" className="text-accent-strong hover:underline">
               See activity
             </a>
           </p>
