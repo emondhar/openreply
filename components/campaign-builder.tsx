@@ -22,6 +22,13 @@ import PostPicker, {
 import CampaignPreview, { type PreviewTab } from "@/components/campaign-preview";
 import { readCache, writeCache } from "@/lib/client-cache";
 import { parsePostRule, type PostRule } from "@/lib/campaigns/post-rules";
+import SuggestionPicker, { IntentTabs } from "@/components/suggestion-picker";
+import {
+  getSuggestionSet,
+  inferIntent,
+  pickPublicReplies,
+  type SuggestionIntent,
+} from "@/lib/campaigns/suggestions";
 import {
   IMPORT_QUEUE_KEY,
   IMPORT_ACCOUNT_KEY,
@@ -180,6 +187,21 @@ export default function CampaignBuilder({ mode, campaignId }: CampaignBuilderPro
 
   const [matchMode, setMatchMode] = useState<MatchMode>("specific");
   const [keywordText, setKeywordText] = useState("");
+  // Which copy set the pickers offer. Seeded from the campaign's own
+  // keywords and name the first time they are typed, then left alone so a
+  // later keyword edit cannot swap the set out from under a chosen suggestion.
+  const [intent, setIntent] = useState<SuggestionIntent | null>(null);
+
+  const activeIntent =
+    intent ??
+    inferIntent({
+      keywords: keywordText
+        .split(",")
+        .map((k) => k.trim())
+        .filter(Boolean),
+      name,
+    });
+  const suggestions = getSuggestionSet(activeIntent);
   const [dmTriggerEnabled, setDmTriggerEnabled] = useState(false);
 
   const [publicReplyEnabled, setPublicReplyEnabled] = useState(false);
@@ -872,9 +894,32 @@ export default function CampaignBuilder({ mode, campaignId }: CampaignBuilderPro
                   + Add another reply
                 </button>
               )}
+              <SuggestionPicker
+                label="Suggested replies"
+                options={suggestions.publicReplies}
+                onPick={(text) =>
+                  setPublicReplyMessages((prev) => {
+                    // Fill the first blank if there is one, otherwise append —
+                    // so repeated clicks build the rotation instead of
+                    // overwriting the previous pick.
+                    const blank = prev.findIndex((m) => !m.trim());
+                    if (blank !== -1)
+                      return prev.map((m, i) => (i === blank ? text : m));
+                    return prev.length < 10 ? [...prev, text] : prev;
+                  })
+                }
+                fillAll={{
+                  count: 5,
+                  onFill: () =>
+                    setPublicReplyMessages(
+                      pickPublicReplies(activeIntent, 5, name.length)
+                    ),
+                }}
+              />
               <p className="text-xs text-muted">
                 One is picked at random each time, so replies don&apos;t look
-                identical.
+                identical. Five is plenty — a single reply under every comment
+                is what makes a thread look automated.
               </p>
             </div>
           )}
@@ -905,6 +950,20 @@ export default function CampaignBuilder({ mode, campaignId }: CampaignBuilderPro
                   placeholder="Send me the link"
                   className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted focus:border-accent/40 focus:outline-none"
                   maxLength={64}
+                />
+                {/* One click sets the message and its button together — they
+                    are written as a pair and a good opener with a mismatched
+                    button label converts worse than either alone. */}
+                <SuggestionPicker
+                  label="Suggested openers (sets the button too)"
+                  options={suggestions.openingDms.map((o) => o.message)}
+                  onPick={(text) => {
+                    const match = suggestions.openingDms.find(
+                      (o) => o.message === text
+                    );
+                    setOpeningDmMessage(text);
+                    if (match) setOpeningDmButtonLabel(match.buttonLabel);
+                  }}
                 />
               </div>
             )}
@@ -956,6 +1015,17 @@ export default function CampaignBuilder({ mode, campaignId }: CampaignBuilderPro
               rows={3}
               className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted focus:border-accent/40 focus:outline-none resize-none"
               maxLength={1000}
+            />
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-xs font-medium text-muted-2">
+                Write for
+              </span>
+              <IntentTabs value={activeIntent} onChange={setIntent} />
+            </div>
+            <SuggestionPicker
+              label="Suggested messages"
+              options={suggestions.dms}
+              onPick={setDmMessage}
             />
             {linkOpen ? (
               <div className="space-y-2">
