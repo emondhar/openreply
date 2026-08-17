@@ -14,6 +14,8 @@
  *   claude mcp add instagram-insights -- npx tsx /abs/path/mcp/server.ts
  */
 
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { config as loadEnv } from "dotenv";
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -21,12 +23,31 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../app/generated/prisma/client.js";
 
-loadEnv();
+/**
+ * stdout is the JSON-RPC channel. Anything else printed there is parsed as a
+ * protocol frame, fails, and kills the connection — which is exactly what
+ * dotenv's startup banner did: its "injected env" line landed ahead of the
+ * initialize response and the client dropped the server before it was usable.
+ * Rebinding console.log makes that class of bug impossible rather than relying
+ * on every dependency to stay quiet.
+ */
+console.log = console.error;
+
+// Resolved from this file, never from cwd. An MCP client launches the server
+// from whatever directory it happens to be in, so a cwd-relative .env lookup
+// finds nothing and the server exits before it can serve anything.
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+loadEnv({
+  path: [path.join(ROOT, ".env.local"), path.join(ROOT, ".env")],
+  quiet: true,
+});
 
 if (!process.env.DATABASE_URL) {
   console.error(
-    "[instagram-insights] DATABASE_URL is not set. The server reads the " +
-      "project's .env; run it from the repo root or export DATABASE_URL."
+    `[instagram-insights] DATABASE_URL is not set.\n` +
+      `  Looked in: ${path.join(ROOT, ".env.local")}\n` +
+      `             ${path.join(ROOT, ".env")}\n` +
+      `  Set it in one of those, or export it in the MCP server's environment.`
   );
   process.exit(1);
 }

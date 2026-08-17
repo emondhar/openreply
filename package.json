@@ -15,7 +15,7 @@
     "worker:dev": "tsx watch --watch-preserve-output --env-file-if-exists=.env worker/dm-worker.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "mcp": "tsx --env-file-if-exists=.env mcp/server.ts"
+    "mcp": "tsx --tsconfig ./tsconfig.json mcp/server.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.2",

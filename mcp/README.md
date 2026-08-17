@@ -10,11 +10,37 @@ fast, work with no network, and can look further back than Instagram's own
 ## Setup
 
 ```bash
-claude mcp add instagram-insights -- npx tsx /ABSOLUTE/PATH/TO/openreply/mcp/server.ts
+claude mcp add instagram-insights -- \
+  npx tsx --tsconfig /ABSOLUTE/PATH/TO/openreply/tsconfig.json \
+              /ABSOLUTE/PATH/TO/openreply/mcp/server.ts
 ```
 
-It reads `DATABASE_URL` from the project's `.env`, so it sees the same data the
-dashboard does. Nothing in here writes — there are no mutating tools to call.
+**`--tsconfig` is required, not optional.** An MCP client launches the server
+from whatever directory it happens to be in, and `tsx` resolves the `@/*` path
+aliases against the *current working directory*. Without the flag, every tool
+that touches `lib/` dies with `Cannot find module '@/lib/db/client'` — and
+because the failure is lazy, `tools/list` still succeeds, so the server looks
+healthy right up until you call something.
+
+`DATABASE_URL` is read from the project's `.env.local` / `.env`, located
+relative to this file rather than to the cwd, so it works from anywhere.
+
+Nothing in here writes — there are no mutating tools to call.
+
+### If it fails to connect
+
+Run the same command by hand and look at **stdout**:
+
+```bash
+echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"t","version":"1"}}}' \
+  | npx tsx --tsconfig /ABS/PATH/tsconfig.json /ABS/PATH/mcp/server.ts
+```
+
+The first line must be JSON. stdout is the JSON-RPC channel, so *any* other
+output there — a dependency's startup banner, a stray `console.log` — is parsed
+as a protocol frame, fails, and drops the connection. `server.ts` rebinds
+`console.log` to stderr to keep that from happening; diagnostics belong on
+stderr.
 
 ## Tools
 
