@@ -228,7 +228,7 @@ export default function PostPicker({
               aria-pressed={typeFilter === filter.value}
               className={`rounded px-2.5 py-1 text-xs transition-colors ${
                 typeFilter === filter.value
-                  ? "bg-accent text-foreground"
+                  ? "bg-accent-strong text-background"
                   : "text-muted hover:text-foreground"
               }`}
             >
@@ -388,7 +388,7 @@ export default function PostPicker({
                 <button
                   type="button"
                   onClick={() => onRuleChange(draft)}
-                  className="rounded bg-accent px-2.5 py-1 text-xs text-foreground hover:opacity-90"
+                  className="rounded-full bg-accent-strong px-2.5 py-1 text-xs font-medium text-background hover:opacity-90"
                 >
                   Keep rule active
                 </button>
@@ -501,14 +501,14 @@ export default function PostPicker({
                     aria-hidden
                     className={`absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full border text-[11px] leading-none ${
                       isSelected
-                        ? "border-accent bg-accent text-foreground"
+                        ? "border-accent-strong bg-accent-strong text-background"
                         : "border-border bg-night/60 text-transparent"
                     }`}
                   >
                     ✓
                   </span>
                   {byRule && (
-                    <span className="absolute inset-x-0 bottom-0 bg-accent-strong py-0.5 text-[10px] font-semibold text-cream">
+                    <span className="absolute inset-x-0 bottom-0 bg-accent-strong py-0.5 text-[10px] font-semibold text-background">
                       Rule
                     </span>
                   )}

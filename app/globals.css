@@ -321,10 +321,15 @@ h1 {
   transform: scale(0.97);
 }
 
+/* The label is the page ground, not a hardcoded cream. That is what keeps the
+   pill correct in both worlds: in daylight --accent-strong is a dark green and
+   --bg is cream (6.12:1); inside .night the accent flips to lime and --bg to
+   near-black (11.80:1). Hardcoding cream measured 1.31:1 on the lime — an
+   invisible label — because the fill flips and a literal cannot follow it. */
 .b-pill--filled {
   background: var(--accent-strong);
   border-color: var(--accent-strong);
-  color: var(--cream);
+  color: var(--bg);
   font-weight: 600;
 }
 

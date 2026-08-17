@@ -367,7 +367,7 @@ export default function InboxPage() {
                       <div
                         className={`max-w-[75%] rounded-lg px-3 py-2 text-sm ${
                           m.fromMe
-                            ? "bg-accent text-foreground"
+                            ? "bg-accent-strong text-background"
                             : "bg-surface text-foreground border border-border"
                         }`}
                       >
