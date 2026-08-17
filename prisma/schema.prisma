@@ -161,11 +161,14 @@ model InstagramAccount {
   connectedAt       DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
-  workspace         Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace         Workspace               @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   automations       Automation[]
   dmLogs            DmLog[]
   linkClicks        LinkClick[]
   followerSnapshots FollowerSnapshot[]
+  audienceSnapshots AudienceSnapshot[]
+  accountMetrics    AccountMetricSnapshot[]
+  mediaMetrics      MediaMetricSnapshot[]
 
   @@index([workspaceId])
 }
@@ -188,6 +191,113 @@ model FollowerSnapshot {
 
   @@unique([instagramAccountId, date])
   @@index([instagramAccountId, date])
+}
+
+/// Which audience a demographic snapshot describes.
+enum AudienceMetric {
+  /// follower_demographics — who follows the account.
+  FOLLOWER
+  /// engaged_audience_demographics — who actually interacted.
+  ENGAGED
+}
+
+enum AudienceDimension {
+  AGE
+  GENDER
+  CITY
+  COUNTRY
+}
+
+/// One bucket of one demographic breakdown, captured on one day.
+///
+/// Instagram serves demographics as a lifetime snapshot over a fixed timeframe
+/// and keeps no history of its own, so a value not recorded here is gone. The
+/// whole point of this table is that a month from now there is a trend to look
+/// at rather than a single number.
+///
+/// `value` is a share of the top-45 buckets Instagram returns, never a true
+/// total — the long tail is truncated upstream and cannot be recovered.
+model AudienceSnapshot {
+  id                 String            @id @default(cuid())
+  instagramAccountId String
+  /// Midnight UTC of the day this capture belongs to.
+  date               DateTime          @db.Date
+  metric             AudienceMetric
+  dimension          AudienceDimension
+  /// The label exactly as Instagram returns it: "25-34", "F", "US", "Montreal".
+  bucket             String
+  value              Int
+  createdAt          DateTime          @default(now())
+
+  instagramAccount InstagramAccount @relation(fields: [instagramAccountId], references: [id], onDelete: Cascade)
+
+  @@unique([instagramAccountId, date, metric, dimension, bucket])
+  @@index([instagramAccountId, metric, dimension, date])
+}
+
+/// A day of one account-level metric, optionally split by a breakdown.
+///
+/// `breakdown` is the dimension name ("follow_type", "media_product_type") and
+/// `bucket` the value within it ("follower", "non_follower", "REELS"). A row
+/// with both null is the un-split total for that metric.
+model AccountMetricSnapshot {
+  id                 String   @id @default(cuid())
+  instagramAccountId String
+  date               DateTime @db.Date
+  /// reach, views, total_interactions, accounts_engaged, profile_links_taps…
+  metric             String
+  /// Empty string, not null, for the un-split total. Postgres treats NULL as
+  /// distinct from NULL in a unique constraint, so a nullable pair here would
+  /// let the nightly upsert miss its own previous row and insert a duplicate
+  /// every single run.
+  breakdown          String   @default("")
+  bucket             String   @default("")
+  value              Int
+  createdAt          DateTime @default(now())
+
+  instagramAccount InstagramAccount @relation(fields: [instagramAccountId], references: [id], onDelete: Cascade)
+
+  @@unique([instagramAccountId, date, metric, breakdown, bucket])
+  @@index([instagramAccountId, metric, date])
+}
+
+/// Point-in-time metrics for one post.
+///
+/// Repeated captures give a decay curve — how quickly a post stopped being
+/// served — which is the only way to tell a post that did 50k in a day from
+/// one that did 50k over a month. Media fields are denormalised so the record
+/// survives the post being deleted on Instagram.
+model MediaMetricSnapshot {
+  id                 String   @id @default(cuid())
+  instagramAccountId String
+  mediaId            String
+  capturedAt         DateTime @default(now())
+
+  mediaType   String?
+  permalink   String?
+  caption     String?
+  publishedAt DateTime?
+
+  views             Int?
+  reach             Int?
+  likes             Int?
+  comments          Int?
+  saved             Int?
+  shares            Int?
+  totalInteractions Int?
+  /// Per-media `follows` — which post actually gained followers, as opposed to
+  /// which one got the most likes. Feed and story only; reels do not report it.
+  follows           Int?
+  profileVisits     Int?
+  /// Reels only, milliseconds. Meaningless without the clip length — see
+  /// lib/insights/queries for the retention calculation.
+  avgWatchTimeMs    Int?
+  skipRate          Float?
+
+  instagramAccount InstagramAccount @relation(fields: [instagramAccountId], references: [id], onDelete: Cascade)
+
+  @@index([instagramAccountId, capturedAt])
+  @@index([mediaId, capturedAt])
 }
 
 model Automation {

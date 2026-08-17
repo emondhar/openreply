@@ -14,7 +14,8 @@
     "worker": "tsx --env-file-if-exists=.env worker/dm-worker.ts",
     "worker:dev": "tsx watch --watch-preserve-output --env-file-if-exists=.env worker/dm-worker.ts",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "mcp": "tsx --env-file-if-exists=.env mcp/server.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.2",
@@ -36,12 +37,14 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/pg": "^8.20.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "1.0.0",
+    "dotenv": "^17.4.2",
     "eslint": "^9",
     "eslint-config-next": "^16.2.6",
     "tailwindcss": "^4",
