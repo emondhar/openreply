@@ -339,6 +339,57 @@ h1 {
   color: var(--bg);
 }
 
+/* ---------------------------------------------------------------- charts
+   Every value below was produced by the palette validator against the surface
+   the marks actually sit on (--surface, not the page), and re-stepped for the
+   night ground rather than flipped. Recorded here so a later edit can be
+   re-checked rather than eyeballed:
+
+     diverging   light  #00660a / #a8386f   deutan ΔE 11.6, normal 30.2
+                 dark   #479c4d / #c35f92   deutan ΔE  8.6, normal 27.3
+     sequential  light  4 steps, light end 2.03:1 vs surface
+                 dark   4 steps, light end 2.07:1 vs surface
+
+   The first pairing tried was the obvious one — brand green against the error
+   red — and it failed at deutan ΔE 4.0. Red/green is the single most common
+   chart-colour mistake and it is invisible to anyone who is not looking for
+   it, which is why this is computed rather than chosen.
+
+   --viz-muted is deliberately chromaless. It is the de-emphasis grey in an
+   emphasis chart, not a categorical slot, so the validator's chroma floor
+   does not apply to it — a de-emphasis colour that reads as a hue defeats the
+   whole pattern. */
+
+:root {
+  /* Polarity: above / below a baseline. */
+  --viz-pos: #00660a;
+  --viz-neg: #a8386f;
+  /* Magnitude, light → dark. */
+  --viz-seq-1: #67b36a;
+  --viz-seq-2: #36933f;
+  --viz-seq-3: #02721c;
+  --viz-seq-4: #005200;
+  /* Emphasis: the one series that is the point, and everything else. */
+  --viz-accent: #00660a;
+  --viz-muted: #8a8175;
+  /* Recessive chrome. */
+  --viz-grid: #d8ceb6;
+  --viz-axis: #675a51;
+}
+
+.night {
+  --viz-pos: #479c4d;
+  --viz-neg: #c35f92;
+  --viz-seq-1: #2f5f33;
+  --viz-seq-2: #3d8443;
+  --viz-seq-3: #5aa85f;
+  --viz-seq-4: #8fd18f;
+  --viz-accent: #8fd18f;
+  --viz-muted: #7d7268;
+  --viz-grid: #493a34;
+  --viz-axis: #b9a99d;
+}
+
 /* ---------------------------------------------------------------- badges
    Filled, not tinted-on-ground. This is the daylight half of the one rule: a
    neon can hold brown text at 6.5:1 (pink) to 11.6:1 (yellow), so a status chip

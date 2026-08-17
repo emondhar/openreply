@@ -8,10 +8,16 @@
 
 import { usePathname } from "next/navigation";
 
+// Every route under the shell needs an entry: an unmapped path falls back to
+// "Dashboard", so /overview and /inbox have both been mislabelling themselves.
 const pageTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
+  "/overview": "Overview",
+  "/audience": "Audience",
+  "/inbox": "Inbox",
   "/campaigns": "Campaigns",
   "/campaigns/new": "New Campaign",
+  "/campaigns/import": "Import Campaigns",
   "/automations": "Campaigns",
   "/automations/new": "New Campaign",
   "/logs": "DM Logs",
