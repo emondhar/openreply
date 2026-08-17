@@ -166,7 +166,7 @@ export default function SettingsView({
         <div className="mt-6 pt-4 border-t border-border flex gap-3">
           <a
             href="/api/instagram/connect"
-            className="px-4 py-2 rounded text-sm font-medium transition-colors bg-accent text-foreground hover:bg-accent-hover"
+            className="b-pill b-pill--filled"
           >
             {accounts.length > 0 ? "Connect another account" : "Connect Instagram"}
           </a>
@@ -264,7 +264,7 @@ export default function SettingsView({
             <button
               type="submit"
               disabled={busy === "invite"}
-              className="rounded bg-accent px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-accent-hover disabled:opacity-50"
+              className="b-pill b-pill--filled disabled:opacity-50"
             >
               {busy === "invite" ? "Inviting..." : "Invite"}
             </button>

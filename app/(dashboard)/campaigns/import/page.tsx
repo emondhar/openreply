@@ -147,7 +147,7 @@ export default function ImportCampaignsPage() {
       <div className="flex items-center gap-4">
         <button
           onClick={startImport}
-          className="px-5 py-2 rounded bg-accent text-sm font-medium text-foreground hover:bg-accent-hover"
+          className="b-pill b-pill--filled"
         >
           Review and import
         </button>

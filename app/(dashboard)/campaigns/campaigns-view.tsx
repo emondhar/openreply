@@ -368,13 +368,13 @@ export default function CampaignsView({
           )}
           <Link
             href="/campaigns/import"
-            className="flex-1 rounded border border-border px-4 py-2 text-center text-sm font-medium text-muted hover:text-foreground sm:flex-none"
+            className="b-pill flex-1 sm:flex-none"
           >
             Import
           </Link>
           <Link
             href="/campaigns/new"
-            className="flex-1 rounded bg-accent px-4 py-2 text-center text-sm font-medium text-foreground hover:bg-accent-hover sm:flex-none"
+            className="b-pill b-pill--filled flex-1 sm:flex-none"
           >
             New Campaign
           </Link>
@@ -467,7 +467,7 @@ export default function CampaignsView({
           </p>
           <Link
             href="/campaigns/new"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded bg-accent text-sm font-semibold text-foreground hover:bg-accent-hover transition-colors"
+            className="b-pill b-pill--filled"
           >
             Create Campaign
           </Link>
